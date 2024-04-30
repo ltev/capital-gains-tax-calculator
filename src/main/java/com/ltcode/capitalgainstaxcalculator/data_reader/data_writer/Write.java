@@ -2,38 +2,41 @@ package com.ltcode.capitalgainstaxcalculator.data_reader.data_writer;
 
 import com.ltcode.capitalgainstaxcalculator.calculator.LeftStockInfo;
 import com.ltcode.capitalgainstaxcalculator.calculator.StockGainsInfo;
+import com.ltcode.capitalgainstaxcalculator.country_info.CountryTaxCalculationInfo;
 import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyExchanger;
 import com.ltcode.capitalgainstaxcalculator.settings.Settings;
 import com.ltcode.capitalgainstaxcalculator.transaction.DividendTransaction;
 import com.ltcode.capitalgainstaxcalculator.transaction.Transaction;
 import com.ltcode.capitalgainstaxcalculator.transaction.TransactionData;
 import com.ltcode.capitalgainstaxcalculator.transaction.joined.JoinedTransactions;
-
+import static com.ltcode.capitalgainstaxcalculator.settings.Settings.GENERATED_DATA_PATH;
 import static com.ltcode.capitalgainstaxcalculator.settings.Settings.CSV_SEPARATOR;
-
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Writer;
 import java.math.RoundingMode;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.time.Period;
 import java.util.*;
 
+
 public class Write {
 
-    public static void generateTransactionsCsvFile(List<? extends Transaction> transactions,
-                                                   String fileName) {
-        generateTransactionsCsvFile(transactions, Settings.CSV_TRANSACTION_WRITE_ORDER, fileName);
+    public static void generateTransactionsCsvFile(List<? extends Transaction> transactions) {
+        generateTransactionsCsvFile(
+                transactions,
+                Settings.CSV_TRANSACTION_WRITE_ORDER,
+                GENERATED_DATA_PATH.resolve(Settings.TRANSACTIONS_FILE_NAME)
+        );
     }
 
     public static void generateTransactionsCsvFile(List<? extends Transaction> transactions,
                                                    TransactionData[] order,
-                                                   String fileName) {
-        fileName = fileName + Settings.CSV_FILE_TYPE;
+                                                   Path path) {
         Writer w = null;
         try {
-            w = Files.newBufferedWriter(Settings.GENERATED_DATA_PATH.resolve(fileName));
+            w = Files.newBufferedWriter(path);
 
             // header
             StringBuilder header = new StringBuilder();
@@ -64,15 +67,15 @@ public class Write {
 
     public static void generateJoinedTransactionsCsvFile(List<JoinedTransactions> joinedTransactionsList,
                                                          CurrencyExchanger exchanger,
-                                                         String fileName) {
+                                                         CountryTaxCalculationInfo countryInfo) {
         generateJoinedTransactionsCsvFile(
                 joinedTransactionsList,
-                Settings.CSV_TRANSACTION_WRITE_ORDER,
+                Settings.CSV_JOINED_TRANSACTION_WRITE_ORDER,
                 exchanger,
-                Settings.DATA_SHIFT,
-                Settings.PRECISION,
-                Settings.ROUNDING_MODE,
-                fileName);
+                countryInfo.getDateShift(),
+                countryInfo.getPrecision(),
+                countryInfo.getRoundingMode(),
+                GENERATED_DATA_PATH.resolve(Settings.JOINED_TRANSACTIONS_FILE_NAME));
     }
 
     public static void generateJoinedTransactionsCsvFile(List<JoinedTransactions> joinedTransactionsList,
@@ -81,7 +84,7 @@ public class Write {
                                                          Period dateShift,
                                                          int precision,
                                                          RoundingMode roundingMode,
-                                                         String fileName) {
+                                                         Path path) {
         /*
                 String[] extendedData = new String[] {
                 "Sell Value",
@@ -97,7 +100,6 @@ public class Write {
                 "Currency"
         };
          */
-        fileName = fileName + Settings.CSV_FILE_TYPE;
         String[] extendedData = new String[]{
                 "Exchange Rate",
                 "Sell Date",
@@ -112,7 +114,7 @@ public class Write {
 
         Writer w = null;
         try {
-            w = Files.newBufferedWriter(Settings.GENERATED_DATA_PATH.resolve(fileName));
+            w = Files.newBufferedWriter(path);
             StringBuilder header = new StringBuilder();
             // header
             for (var data : order) {
@@ -151,27 +153,24 @@ public class Write {
 
     public static void generateDividendTransactionsCsvFile(List<DividendTransaction> dividendList,
                                                            CurrencyExchanger exchanger,
-                                                           String fileName) {
+                                                           CountryTaxCalculationInfo countryInfo) {
         generateDividendTransactionsCsvFile(
                 dividendList,
                 Settings.CSV_DIVIDEND_WRITE_ORDER,
                 exchanger,
-                Settings.DATA_SHIFT,
-                Settings.PRECISION,
-                Settings.ROUNDING_MODE,
-                fileName);
+                countryInfo,
+                GENERATED_DATA_PATH.resolve(Settings.DIVIDEND_TRANSACTIONS_FILE_NAME)
+        );
     }
+
     public static void generateDividendTransactionsCsvFile(List<DividendTransaction> dividendList,
                                                            TransactionData[] order,
                                                            CurrencyExchanger exchanger,
-                                                           Period dateShift,
-                                                           int precision,
-                                                           RoundingMode roundingMode,
-                                                           String fileName) {
-        fileName = fileName + Settings.CSV_FILE_TYPE;
+                                                           CountryTaxCalculationInfo countryInfo,
+                                                           Path path) {
         Writer w = null;
         try {
-            w = Files.newBufferedWriter(Settings.GENERATED_DATA_PATH.resolve(fileName));
+            w = Files.newBufferedWriter(path);
             StringBuilder header = new StringBuilder();
             for (var data : order) {
                 header.append(CSV_SEPARATOR)
@@ -196,11 +195,11 @@ public class Write {
             for (DividendTransaction t : dividendList) {
                 String sb = t.generateCsvLine(order) +
                         CSV_SEPARATOR +
-                        exchanger.getRateUpTo7DaysPrevious(t.getCurrency(), t.getDateTime().toLocalDate().plus(dateShift)) +
+                        exchanger.getRateUpTo7DaysPrevious(t.getCurrency(), t.getDateTime().toLocalDate().plus(countryInfo.getDateShift())) +
                         CSV_SEPARATOR +
-                        t.getValue(exchanger, dateShift, precision, roundingMode) +
+                        t.getValue(exchanger, countryInfo.getDateShift(),countryInfo.getPrecision(), countryInfo.getRoundingMode()) +
                         CSV_SEPARATOR +
-                        t.getPaidTaxes(exchanger, dateShift, precision, roundingMode) +
+                        t.getPaidTaxes(exchanger, countryInfo.getDateShift(), countryInfo.getPrecision(), countryInfo.getRoundingMode()) +
                         CSV_SEPARATOR +
                         exchanger.getToCurrency() +
                         CSV_SEPARATOR +
@@ -222,14 +221,18 @@ public class Write {
 
     }
 
+    public static void generateYearStockGainsMapCsvFile(Map<Integer, Map<String, StockGainsInfo>> yearStockGainsMap) {
+        generateYearStockGainsMapCsvFile(
+                yearStockGainsMap,
+                GENERATED_DATA_PATH.resolve(Settings.GAINS_FILE_NAME)
+        );
+    }
 
     public static void generateYearStockGainsMapCsvFile(Map<Integer, Map<String, StockGainsInfo>> yearStockGainsMap,
-                                                        CurrencyExchanger exchanger,
-                                                        String fileName) {
-        fileName = fileName + Settings.CSV_FILE_TYPE;
+                                                        Path path) {
         Writer w = null;
         try {
-            w = Files.newBufferedWriter(Settings.GENERATED_DATA_PATH.resolve(fileName));
+            w = Files.newBufferedWriter(path);
             StringBuilder header = new StringBuilder();
 
             // header
@@ -267,20 +270,28 @@ public class Write {
         }
     }
 
+    public static void generateCalculationSummaryTxtFile(Map<Integer, StockGainsInfo> yearAllStocksGainsMap,
+                                                         List<LeftStockInfo> leftStocksList,
+                                                         String info) {
+        generateCalculationSummaryTxtFile(
+                yearAllStocksGainsMap,
+                leftStocksList,
+                info,
+                GENERATED_DATA_PATH.resolve(Settings.SUMMARY_FILE_NAME)
+        );
+    }
 
     public static void generateCalculationSummaryTxtFile(Map<Integer, StockGainsInfo> yearAllStocksGainsMap,
-                                                         Map<Integer, Map<String, StockGainsInfo>> yearStockGainsMap,
                                                          List<LeftStockInfo> leftStocksList,
                                                          String info,
-                                                         String fileName) {
-        fileName = fileName + ".txt";
+                                                         Path path) {
         Writer w = null;
         try {
-            w = Files.newBufferedWriter(Settings.GENERATED_DATA_PATH.resolve(fileName));
+            w = Files.newBufferedWriter(path);
             DecimalFormat formatter = new DecimalFormat("#,##0.00");
 
             w.append("\tTOTAL GAINS BY YEAR\n\n");
-            w.append(String.format("%7s %15s %15s %15s %15s\n",
+            w.append(String.format("%7s %15s %15s %15s %15s %15s\n",
                     "YEAR",
                     "SELL VALUE",
                     "BUY VALUE",
@@ -291,9 +302,9 @@ public class Write {
             );
             for (int year : yearAllStocksGainsMap.keySet()) {
                 var gainsInfo = yearAllStocksGainsMap.get(year);
-                w.append(String.format("%7s %15s %15s %15s %15s\n",
+                w.append(String.format("%7s %15s %15s %15s %15s %15s\n",
                         gainsInfo.getYear(),
-                        formatter.format(gainsInfo.getTotalSellValue().doubleValue()),
+                        formatter.format(gainsInfo.getTotalSellValue()),
                         formatter.format(gainsInfo.getTotalBuyValue()),
                         formatter.format(gainsInfo.getTotalCommission()),
                         formatter.format(gainsInfo.getTotalProfitValue()),
@@ -315,8 +326,10 @@ public class Write {
                 );
             }
 
-            w.append("\n\tADDITIONAL INFO\n\n");
-            w.append(info);
+            if (! info.isEmpty()) {
+                w.append("\n\tADDITIONAL INFO\n\n");
+                w.append(info);
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         } finally {
