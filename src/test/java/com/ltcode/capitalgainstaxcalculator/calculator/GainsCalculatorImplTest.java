@@ -1,14 +1,15 @@
 package com.ltcode.capitalgainstaxcalculator.calculator;
 
 import com.ltcode.capitalgainstaxcalculator.TestSettings;
-import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyExchangerImp;
-import com.ltcode.capitalgainstaxcalculator.transaction.Currency;
+import com.ltcode.capitalgainstaxcalculator.country_info.CountryTaxCalculationInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
-import java.nio.file.Paths;
+import java.math.RoundingMode;
+import java.time.Period;
 
+import static com.ltcode.capitalgainstaxcalculator.transaction.Currency.USD;
 import static org.junit.jupiter.api.Assertions.*;
 
 class
@@ -19,17 +20,15 @@ GainsCalculatorImplTest {
     @BeforeEach
     void setUp() {
         calculator = new GainsCalculatorImpl(
-                TestSettings.getTransactionList(TestSettings.SOURCE.HERE),
-                new CurrencyExchangerImp(Currency.USD,
-                Paths.get(TestSettings.SRC_TEST_DATA)));
+                new CountryTaxCalculationInfo(null, USD, 2, RoundingMode.HALF_UP, Period.ofDays(0)),
+                TestSettings.getTransactionList(TestSettings.SOURCE.HERE)
+        );
         calculator.calculate();
     }
 
     @Test
     void print() {
-        calculator.print();
-
-        var tickers= calculator.getTickersLeft();
+         var tickers= calculator.getTickersLeft();
         for (String ticker : tickers) {
             System.out.println(ticker + " " + calculator.getQuantityLeft(ticker));
         }

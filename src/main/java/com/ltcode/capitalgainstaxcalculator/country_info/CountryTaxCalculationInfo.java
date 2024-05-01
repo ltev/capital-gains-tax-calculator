@@ -12,14 +12,14 @@ public final class CountryTaxCalculationInfo {
     private final Currency currency;
     private final int precision;
     private final RoundingMode roundingMode;
-    private final Period dataShift;
+    private final Period dateShift;
 
-    public CountryTaxCalculationInfo(Country country, Currency currency, int precision, RoundingMode roundingMode, Period dataShift) {
+    public CountryTaxCalculationInfo(Country country, Currency currency, int precision, RoundingMode roundingMode, Period dateShift) {
         this.country = country;
         this.currency = currency;
         this.precision = precision;
         this.roundingMode = roundingMode;
-        this.dataShift = dataShift;
+        this.dateShift = dateShift;
     }
 
     public static CountryTaxCalculationInfo getInstance(Country country) {
@@ -58,7 +58,7 @@ public final class CountryTaxCalculationInfo {
         return roundingMode;
     }
 
-    public Period getDataShift() {
-        return dataShift;
+    public Period getDateShift() {
+        return dateShift;
     }
 }

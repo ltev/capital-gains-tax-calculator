@@ -1,8 +1,8 @@
 package com.ltcode.capitalgainstaxcalculator.transaction;
 
 import com.ltcode.capitalgainstaxcalculator.TestSettings;
-import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyExchanger;
-import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyExchangerImp;
+import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyRateExchanger;
+import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyRateExchangerImp;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -16,8 +16,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class TransactionTest {
 
-    CurrencyExchanger toPlnExchanger;
-    CurrencyExchanger toEuroExchanger;
+    CurrencyRateExchanger toPlnExchanger;
+    CurrencyRateExchanger toEuroExchanger;
     Period dateShift = Period.ofDays(0);
     int precision =4;
     RoundingMode roundingMode = RoundingMode.HALF_UP;
@@ -25,8 +25,8 @@ class TransactionTest {
     @BeforeEach
     void setUp() {
         Path dirPath = Paths.get(TestSettings.SRC_TEST_DATA);
-        toPlnExchanger = new CurrencyExchangerImp(Currency.PLN, dirPath);
-        toEuroExchanger = new CurrencyExchangerImp(Currency.EUR, dirPath);
+        toPlnExchanger = new CurrencyRateExchangerImp(Currency.PLN, dirPath);
+        toEuroExchanger = new CurrencyRateExchangerImp(Currency.EUR, dirPath);
     }
 
     @Test

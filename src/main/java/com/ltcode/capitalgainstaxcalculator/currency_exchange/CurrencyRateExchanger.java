@@ -5,7 +5,7 @@ import com.ltcode.capitalgainstaxcalculator.transaction.Currency;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public interface CurrencyExchanger {
+public interface CurrencyRateExchanger {
 
     Currency getToCurrency();
 

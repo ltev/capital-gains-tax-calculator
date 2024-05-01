@@ -2,14 +2,13 @@ package com.ltcode.capitalgainstaxcalculator;
 import com.ltcode.capitalgainstaxcalculator.broker.Broker;
 import com.ltcode.capitalgainstaxcalculator.calculator.GainsCalculator;
 import com.ltcode.capitalgainstaxcalculator.calculator.GainsCalculatorImpl;
-import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyExchanger;
-import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyExchangerImp;
+import com.ltcode.capitalgainstaxcalculator.country_info.Country;
+import com.ltcode.capitalgainstaxcalculator.country_info.CountryTaxCalculationInfo;
 import com.ltcode.capitalgainstaxcalculator.data_reader.TransactionReader;
 import com.ltcode.capitalgainstaxcalculator.settings.Settings;
 import com.ltcode.capitalgainstaxcalculator.transaction.Currency;
 import com.ltcode.capitalgainstaxcalculator.transaction.Transaction;
 
-import java.math.RoundingMode;
 import java.time.Period;
 import java.util.Comparator;
 import java.util.List;
@@ -27,7 +26,7 @@ public class Main {
         String degiro_account_file = "account_degiro.csv";
 
         // all transactions
-        // List<? extends Transaction> transactionList = TransactionReader.read(BROKER,Settings.TRANSACTIONS_DATA_PATH.resolve(degiro_transaction_file));
+        //List<? extends Transaction> transactionList = TransactionReader.read(BROKER,Settings.TRANSACTIONS_DATA_PATH.resolve(degiro_transactions_file));
 
 
         // all transactions of one specific automatic degiro fund
@@ -38,6 +37,7 @@ public class Main {
         */
 
         // dividends
+
         List<? extends Transaction> transactionList = TransactionReader.readDividendList(
                         BROKER,
                         Settings.TRANSACTIONS_DATA_PATH.resolve(degiro_account_file)
@@ -52,8 +52,8 @@ public class Main {
               //  BROKER,Settings.TRANSACTIONS_DATA_PATH.resolve("Account_degiro.csv"));
 
 
-        CurrencyExchanger exchanger = new CurrencyExchangerImp(CURRENCY, Settings.EXCHANGE_RATES_DATA_PATH);
-        GainsCalculator calculator = new GainsCalculatorImpl(transactionList, exchanger, EXCHANGER_RATE_DATE_SHIFT, 2, RoundingMode.HALF_UP);
+        CountryTaxCalculationInfo polandInfo = CountryTaxCalculationInfo.getInstance(Country.POLAND);
+        GainsCalculator calculator = new GainsCalculatorImpl(polandInfo, transactionList);
         calculator.calculate();
         calculator.generateTransactionsCsvFile();
 
@@ -81,7 +81,7 @@ public class Main {
                 "dividends_all"
         );
         */
-        System.out.println("=== STOCKS LEFT");
-        calculator.getLeftStocksList().forEach(System.out::println);
+        //System.out.println("=== STOCKS LEFT");
+        //calculator.getLeftStocksList().forEach(System.out::println);
     }
 }

@@ -1,13 +1,16 @@
 package com.ltcode.capitalgainstaxcalculator.calculator;
 
-import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyExchanger;
+import com.ltcode.capitalgainstaxcalculator.country_info.CountryTaxCalculationInfo;
+import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyRateExchanger;
+import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyRateExchangerImp;
 import com.ltcode.capitalgainstaxcalculator.data_reader.data_writer.Write;
 import com.ltcode.capitalgainstaxcalculator.exception.InvalidDateOrderException;
 import com.ltcode.capitalgainstaxcalculator.settings.Settings;
 import com.ltcode.capitalgainstaxcalculator.transaction.*;
 import com.ltcode.capitalgainstaxcalculator.transaction.Currency;
-import com.ltcode.capitalgainstaxcalculator.transaction.joined.JoinedTransactions;
+import com.ltcode.capitalgainstaxcalculator.transaction.joined.JoinedTransaction;
 import com.ltcode.capitalgainstaxcalculator.transaction.type.TransactionType;
+import com.ltcode.capitalgainstaxcalculator.transaction_converter.TransactionValuesConverter;
 
 
 import java.math.BigDecimal;
@@ -15,9 +18,12 @@ import java.math.RoundingMode;
 import java.time.Period;
 import java.util.*;
 
-import static com.ltcode.capitalgainstaxcalculator.transaction.TransactionData.*;
-
 public class GainsCalculatorImpl implements GainsCalculator {
+
+
+    private final CountryTaxCalculationInfo COUNTRY_INFO;
+
+    private final TransactionValuesConverter valuesConverter;
 
     /**
      * double places
@@ -28,10 +34,10 @@ public class GainsCalculatorImpl implements GainsCalculator {
      *
      */
     private final Period EXCHANGE_RATE_DATA_SHIFT;
-    private final List<? extends Transaction> transactions;
+    private final List<? extends Transaction> TRANSACTIONS;
     private SellBuyJoiner joiner;
-    private final CurrencyExchanger EXCHANGER;
-    private List<JoinedTransactions> joinedTransactionsList;
+    private final CurrencyRateExchanger EXCHANGER;
+    private List<JoinedTransaction> joinedTransactionList;
     private List<DividendTransaction> dividendTransactionsList;
     /**
      * year -> Map<Ticker, StockGainsInfo>
@@ -45,44 +51,28 @@ public class GainsCalculatorImpl implements GainsCalculator {
     private Map<Integer, DividendGainsInfo> yearDividendGainsMap;
     private final Currency TO_CURRENCY;
 
+    public GainsCalculatorImpl(CountryTaxCalculationInfo countryInfo, List<? extends Transaction> transactions) {
+        this.COUNTRY_INFO = countryInfo;
+        this.TRANSACTIONS = new ArrayList<>(transactions);
+        this.valuesConverter = new TransactionValuesConverter(countryInfo);
 
-    public GainsCalculatorImpl(List<? extends Transaction> transactions,
-                               CurrencyExchanger exchangeRateGenerator) {
-        this(transactions, exchangeRateGenerator, Period.ofDays(0), 0, RoundingMode.HALF_UP);
-
-        Write.generateTransactionsCsvFile(
-                transactions,
-                Settings.TRANSACTIONS_FILE_NAME);
-
-    }
-
-    public GainsCalculatorImpl(List<? extends Transaction> transactions,
-                               CurrencyExchanger exchangeRateGenerator,
-                               Period exchangeRateDataShift,
-                               int precision,
-                               RoundingMode ROUNDING_MODE) {
-        this.transactions = new ArrayList<>(transactions);
-        this.EXCHANGER = exchangeRateGenerator;
+        this.EXCHANGER = new CurrencyRateExchangerImp(COUNTRY_INFO.getCurrency(), Settings.EXCHANGE_RATES_DATA_PATH);;
         this.TO_CURRENCY = EXCHANGER.getToCurrency();
-        this.PRECISION = precision;
-        this.ROUNDING_MODE = ROUNDING_MODE;
-        this.EXCHANGE_RATE_DATA_SHIFT = exchangeRateDataShift;
-
-        Write.generateTransactionsCsvFile(
-                transactions,
-                Settings.TRANSACTIONS_FILE_NAME);
+        this.PRECISION = COUNTRY_INFO.getPrecision();
+        this.ROUNDING_MODE = COUNTRY_INFO.getRoundingMode();
+        this.EXCHANGE_RATE_DATA_SHIFT = COUNTRY_INFO.getDateShift();
     }
 
     public void calculate() {
         try {
-            TransactionUtils.checkTransactionsValidity(transactions);
+            TransactionUtils.checkTransactionsValidity(TRANSACTIONS);
         } catch (InvalidDateOrderException e) {
             // reverse transactions if not in chronological order
-            Collections.reverse(transactions);
+            Collections.reverse(TRANSACTIONS);
         }
-        TransactionUtils.checkTransactionsValidity(transactions);
-        this.joiner = new SellBuyJoiner(this.transactions, PRECISION, ROUNDING_MODE);
-        this.joinedTransactionsList = joiner.join();
+        TransactionUtils.checkTransactionsValidity(TRANSACTIONS);
+        this.joiner = new SellBuyJoiner(this.TRANSACTIONS, PRECISION, ROUNDING_MODE);
+        this.joinedTransactionList = joiner.join();
         this.dividendTransactionsList = new ArrayList<>();
         this.yearStockGainsMap = new LinkedHashMap<>();
         this.yearAllStocksGainsMap = new LinkedHashMap<>();
@@ -132,56 +122,25 @@ public class GainsCalculatorImpl implements GainsCalculator {
     @Override
     public void generateTransactionsCsvFile() {
         // in original currency
-        Write.generateTransactionsCsvFile(
-                transactions,
-                Settings.TRANSACTIONS_FILE_NAME);
+        Write.generateTransactionsCsvFile(TRANSACTIONS);
 
-        Write.generateJoinedTransactionsCsvFile(joinedTransactionsList,
-                new TransactionData[]{
-                        DATE_TIME,
-                        TICKER,
-                        PRODUCT,
-                        TYPE,
-                        QUANTITY,
-                        PRICE_PER_SHARE,
-                        VALUE,
-                        COMMISSION,
-                        TransactionData.CURRENCY
-                },
+        Write.generateJoinedTransactionsCsvFile(
+                joinedTransactionList,
                 EXCHANGER,
-                EXCHANGE_RATE_DATA_SHIFT,
-                PRECISION,
-                ROUNDING_MODE,
-                Settings.JOINED_TRANSACTIONS_FILE_NAME + "_" + EXCHANGER.getToCurrency());
+                COUNTRY_INFO
+        );
 
-        Write.generateYearStockGainsMapCsvFile(yearStockGainsMap,
-                EXCHANGER,
-                Settings.GAINS_FILE_NAME + "_" + EXCHANGER.getToCurrency());
+        Write.generateYearStockGainsMapCsvFile(yearStockGainsMap);
 
         Write.generateDividendTransactionsCsvFile(
                 dividendTransactionsList,
-                new TransactionData[] {
-                        DATE_TIME,
-                        TICKER,
-                        PRODUCT,
-                        TYPE,
-                        VALUE,
-                        TAX_PAID,
-                        TransactionData.CURRENCY
-                },
-                EXCHANGER,
-                EXCHANGE_RATE_DATA_SHIFT,
-                PRECISION,
-                ROUNDING_MODE,
-                Settings.DIVIDEND_TRANSACTIONS_FILE_NAME + "_" + EXCHANGER.getToCurrency()
+                valuesConverter
         );
 
         Write.generateCalculationSummaryTxtFile(
             yearAllStocksGainsMap,
-            yearStockGainsMap,
             getLeftStocksList(),
-            joiner.getReport(),
-            Settings.SUMMARY_FILE_NAME + "_" + EXCHANGER.getToCurrency()
+            joiner.getReport()
         );
     }
 
@@ -196,7 +155,7 @@ public class GainsCalculatorImpl implements GainsCalculator {
     private void calculateTotalStockGainsByYear() {
         String ALL_STOCKS_TICKER = "ALL STOCKS TOGETHER";
 
-        for (var jt : joinedTransactionsList) {
+        for (var jt : joinedTransactionList) {
             var sell = jt.getSellTransaction();
             int year = sell.getDateTime().getYear();
             StockGainsInfo allStocks;
@@ -213,18 +172,20 @@ public class GainsCalculatorImpl implements GainsCalculator {
             currStock = yearStockGainsMap.get(year).get(sell.getTicker());
 
             // add to total value
-            allStocks.addToTotalSellValue(sell.getValue(EXCHANGER, EXCHANGE_RATE_DATA_SHIFT, PRECISION, ROUNDING_MODE));
-            allStocks.addToTotalBuyValue(jt.getTotalBuyValue(EXCHANGER, EXCHANGE_RATE_DATA_SHIFT, PRECISION, ROUNDING_MODE));
-            allStocks.addToTotalBuySellCommission(jt.getTotalBuySellCommission(EXCHANGER, EXCHANGE_RATE_DATA_SHIFT, PRECISION, ROUNDING_MODE));
+            allStocks.addToTotalSellValue(valuesConverter.getValue(sell));
+            allStocks.addToTotalSellCommission(valuesConverter.getCommission(sell));
+            allStocks.addToTotalBuyValue(valuesConverter.getTotalBuyValue(jt));
+            allStocks.addToTotalBuyCommission(valuesConverter.getTotalBuyCommission(jt));
 
-            currStock.addToTotalSellValue(sell.getValue(EXCHANGER, EXCHANGE_RATE_DATA_SHIFT, PRECISION, ROUNDING_MODE));
-            currStock.addToTotalBuyValue(jt.getTotalBuyValue(EXCHANGER, EXCHANGE_RATE_DATA_SHIFT, PRECISION, ROUNDING_MODE));
-            currStock.addToTotalBuySellCommission(jt.getTotalBuySellCommission(EXCHANGER, EXCHANGE_RATE_DATA_SHIFT, PRECISION, ROUNDING_MODE));
+            currStock.addToTotalSellValue(valuesConverter.getValue(sell));
+            currStock.addToTotalSellCommission(valuesConverter.getCommission(sell));
+            currStock.addToTotalBuyValue(valuesConverter.getTotalBuyValue(jt));
+            currStock.addToTotalBuyCommission(valuesConverter.getTotalBuyCommission(jt));
         }
     }
 
     private void calculateTotalDividendGainsByYear() {
-        for (Transaction t : transactions) {
+        for (Transaction t : TRANSACTIONS) {
             if (t.getType() == TransactionType.DIVIDEND) {
                 dividendTransactionsList.add((DividendTransaction) t);
             }

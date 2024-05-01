@@ -1,7 +1,8 @@
 package com.ltcode.capitalgainstaxcalculator.transaction;
 
 
-import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyExchanger;
+import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyRateExchanger;
+import com.ltcode.capitalgainstaxcalculator.exception.OperationNotSupportedException;
 import com.ltcode.capitalgainstaxcalculator.settings.Settings;
 import com.ltcode.capitalgainstaxcalculator.transaction.type.TransactionType;
 import com.ltcode.capitalgainstaxcalculator.utils.Utils;
@@ -16,13 +17,11 @@ public abstract class Transaction {
 
     protected final TransactionType type;
     protected final LocalDateTime dateTime;
-
     /**
-     * quantity * pricePerShare + commission
+     * quantity * pricePerShare (no commission)
      * Can differ from that equation when pricePerShare was rounded when read
      */
     protected final BigDecimal value;
-
     protected final Currency currency;
 
     public Transaction(LocalDateTime dateTime, TransactionType type, BigDecimal value, Currency currency) {
@@ -52,20 +51,45 @@ public abstract class Transaction {
         return value;
     }
 
+    public Currency getCurrency() {
+        return currency;
+    }
+
+
+    // OperationNotSupportedException - as default, using inheritance
+
+    public BigDecimal getCommission() {
+        throw new OperationNotSupportedException();
+    }
+    public String getProduct() {
+        throw new OperationNotSupportedException();
+    }
+
+    public BigDecimal getPricePerShare() {
+        throw new OperationNotSupportedException();
+    }
+
+    public BigDecimal getTaxPaid() {
+        throw new OperationNotSupportedException();
+    }
+
+    public String getTicker() {
+        throw new OperationNotSupportedException();
+    }
+
+
+    // EXCHANGING VALUES FOR MATCHING CURRENCY
+
     /**
      * @return value in exchange currency from THE DAY BEFORE, or the first working day before
      * precision - decimal places
      */
-    public BigDecimal getValue(CurrencyExchanger exchanger, Period periodShift, int precision, RoundingMode roundingMode) {
+    public BigDecimal getValue(CurrencyRateExchanger exchanger, Period periodShift, int precision, RoundingMode roundingMode) {
         return currency == exchanger.getToCurrency()
-            ? value
+                ? value
                 : value.multiply(
                         exchanger.getRateUpTo7DaysPrevious(currency, getDateTime().toLocalDate().plus(periodShift)))
                 .setScale(precision, roundingMode);     // RATE FROM THE PREVIOUS DAY
-    }
-
-    public Currency getCurrency() {
-        return currency;
     }
 
     @Override
@@ -108,5 +132,4 @@ public abstract class Transaction {
         }
         return sb.substring(1);
     }
-
 }

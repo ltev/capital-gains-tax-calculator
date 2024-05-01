@@ -3,12 +3,14 @@ package com.ltcode.capitalgainstaxcalculator.data_reader.data_writer;
 import com.ltcode.capitalgainstaxcalculator.calculator.LeftStockInfo;
 import com.ltcode.capitalgainstaxcalculator.calculator.StockGainsInfo;
 import com.ltcode.capitalgainstaxcalculator.country_info.CountryTaxCalculationInfo;
-import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyExchanger;
+import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyRateExchanger;
 import com.ltcode.capitalgainstaxcalculator.settings.Settings;
 import com.ltcode.capitalgainstaxcalculator.transaction.DividendTransaction;
 import com.ltcode.capitalgainstaxcalculator.transaction.Transaction;
 import com.ltcode.capitalgainstaxcalculator.transaction.TransactionData;
-import com.ltcode.capitalgainstaxcalculator.transaction.joined.JoinedTransactions;
+import com.ltcode.capitalgainstaxcalculator.transaction.joined.JoinedTransaction;
+import com.ltcode.capitalgainstaxcalculator.transaction_converter.TransactionValuesConverter;
+
 import static com.ltcode.capitalgainstaxcalculator.settings.Settings.GENERATED_DATA_PATH;
 import static com.ltcode.capitalgainstaxcalculator.settings.Settings.CSV_SEPARATOR;
 import java.io.IOException;
@@ -65,11 +67,11 @@ public class Write {
         }
     }
 
-    public static void generateJoinedTransactionsCsvFile(List<JoinedTransactions> joinedTransactionsList,
-                                                         CurrencyExchanger exchanger,
+    public static void generateJoinedTransactionsCsvFile(List<JoinedTransaction> joinedTransactionList,
+                                                         CurrencyRateExchanger exchanger,
                                                          CountryTaxCalculationInfo countryInfo) {
         generateJoinedTransactionsCsvFile(
-                joinedTransactionsList,
+                joinedTransactionList,
                 Settings.CSV_JOINED_TRANSACTION_WRITE_ORDER,
                 exchanger,
                 countryInfo.getDateShift(),
@@ -78,9 +80,9 @@ public class Write {
                 GENERATED_DATA_PATH.resolve(Settings.JOINED_TRANSACTIONS_FILE_NAME));
     }
 
-    public static void generateJoinedTransactionsCsvFile(List<JoinedTransactions> joinedTransactionsList,
+    public static void generateJoinedTransactionsCsvFile(List<JoinedTransaction> joinedTransactionList,
                                                          TransactionData[] order,
-                                                         CurrencyExchanger exchanger,
+                                                         CurrencyRateExchanger exchanger,
                                                          Period dateShift,
                                                          int precision,
                                                          RoundingMode roundingMode,
@@ -129,7 +131,7 @@ public class Write {
                     .append("\n");
 
             // transactions
-            for (JoinedTransactions jt : joinedTransactionsList) {
+            for (JoinedTransaction jt : joinedTransactionList) {
                 w.append(jt.generateCsvLine(order, exchanger, dateShift, precision, roundingMode));
                 // check if joined transaction has not matching times
                 if (jt.isSellTimeInvalid()) {
@@ -152,21 +154,18 @@ public class Write {
     }
 
     public static void generateDividendTransactionsCsvFile(List<DividendTransaction> dividendList,
-                                                           CurrencyExchanger exchanger,
-                                                           CountryTaxCalculationInfo countryInfo) {
+                                                           TransactionValuesConverter valuesConverter) {
         generateDividendTransactionsCsvFile(
                 dividendList,
                 Settings.CSV_DIVIDEND_WRITE_ORDER,
-                exchanger,
-                countryInfo,
+                valuesConverter,
                 GENERATED_DATA_PATH.resolve(Settings.DIVIDEND_TRANSACTIONS_FILE_NAME)
         );
     }
 
     public static void generateDividendTransactionsCsvFile(List<DividendTransaction> dividendList,
                                                            TransactionData[] order,
-                                                           CurrencyExchanger exchanger,
-                                                           CountryTaxCalculationInfo countryInfo,
+                                                           TransactionValuesConverter valuesConverter,
                                                            Path path) {
         Writer w = null;
         try {
@@ -193,17 +192,17 @@ public class Write {
 
             // transaction csv representation
             for (DividendTransaction t : dividendList) {
-                String sb = t.generateCsvLine(order) +
-                        CSV_SEPARATOR +
-                        exchanger.getRateUpTo7DaysPrevious(t.getCurrency(), t.getDateTime().toLocalDate().plus(countryInfo.getDateShift())) +
-                        CSV_SEPARATOR +
-                        t.getValue(exchanger, countryInfo.getDateShift(),countryInfo.getPrecision(), countryInfo.getRoundingMode()) +
-                        CSV_SEPARATOR +
-                        t.getPaidTaxes(exchanger, countryInfo.getDateShift(), countryInfo.getPrecision(), countryInfo.getRoundingMode()) +
-                        CSV_SEPARATOR +
-                        exchanger.getToCurrency() +
-                        CSV_SEPARATOR +
-                        t.getPercentOfPaidTaxes();
+                String sb = t.generateCsvLine(order)
+                        + CSV_SEPARATOR
+                        + valuesConverter.getRateAfterShiftUpTo7DaysPrevious(t)
+                        + CSV_SEPARATOR
+                        + valuesConverter.getValue(t)
+                        + CSV_SEPARATOR
+                        + valuesConverter.getPaidTaxes(t)
+                        + CSV_SEPARATOR
+                        + valuesConverter.getToCurrency()
+                        + CSV_SEPARATOR
+                        + t.getPercentOfPaidTaxes();
                 w.append(sb);
                 w.append('\n');
             }
@@ -306,7 +305,7 @@ public class Write {
                         gainsInfo.getYear(),
                         formatter.format(gainsInfo.getTotalSellValue()),
                         formatter.format(gainsInfo.getTotalBuyValue()),
-                        formatter.format(gainsInfo.getTotalCommission()),
+                        formatter.format(gainsInfo.getTotalBuySellCommission()),
                         formatter.format(gainsInfo.getTotalProfitValue()),
                         gainsInfo.getCurrency())
                 );

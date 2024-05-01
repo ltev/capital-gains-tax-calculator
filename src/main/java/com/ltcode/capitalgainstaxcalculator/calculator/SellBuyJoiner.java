@@ -3,7 +3,7 @@ package com.ltcode.capitalgainstaxcalculator.calculator;
 import com.ltcode.capitalgainstaxcalculator.exception.InvalidQuantityException;
 import com.ltcode.capitalgainstaxcalculator.exception.TransactionInfoException;
 import com.ltcode.capitalgainstaxcalculator.transaction.*;
-import com.ltcode.capitalgainstaxcalculator.transaction.joined.JoinedTransactions;
+import com.ltcode.capitalgainstaxcalculator.transaction.joined.JoinedTransaction;
 import com.ltcode.capitalgainstaxcalculator.transaction.type.TransactionType;
 import com.ltcode.capitalgainstaxcalculator.utils.Utils;
 
@@ -44,7 +44,7 @@ public class SellBuyJoiner {
         TransactionUtils.checkTransactionsValidity(this.transactionList);
     }
 
-    public List<JoinedTransactions> join() {
+    public List<JoinedTransaction> join() {
         StringBuilder infoBuilder = new StringBuilder();
         this.sellTransactionList = new ArrayList<>();
         this.buyTransactionMap = new HashMap<>();
@@ -52,7 +52,7 @@ public class SellBuyJoiner {
         this.transactionsThatCouldNotBeSold = new ArrayList<>();
         fillTickerMapData();
 
-        List<JoinedTransactions> result = new ArrayList<>(sellTransactionList.size());
+        List<JoinedTransaction> result = new ArrayList<>(sellTransactionList.size());
 
         BigDecimal ZERO = new BigDecimal("0.0");
         for (int i = 0; i < sellTransactionList.size(); i++) {
@@ -61,6 +61,7 @@ public class SellBuyJoiner {
                 List<BuySellTransaction> buyList = buyTransactionMap.get(sellTransaction.getTicker());
                 List<BuySellTransaction> matchingBuyList = new ArrayList<>();
 
+                // SPLIT SHOULD USE MAP FOR TICKER -> SPLIT not splitTransactions.get(0) // the matching split might be later in the list
                 // CHECK FOR SPLIT
                 if (splitTransactions.size() > 0 && splitTransactions.get(0).getTicker().equals(sellTransaction.getTicker())) {
                     numberOfSplits++;
@@ -115,7 +116,7 @@ public class SellBuyJoiner {
                     }
                 }
                 if (isSellWithBuyMatching) {
-                    result.add(new JoinedTransactions(sellTransaction, matchingBuyList, isSellBuyTimeMatching));
+                    result.add(new JoinedTransaction(sellTransaction, matchingBuyList, isSellBuyTimeMatching));
                 }
             } catch (InvalidQuantityException e) {
                 infoBuilder.append("PROBLEM: ")

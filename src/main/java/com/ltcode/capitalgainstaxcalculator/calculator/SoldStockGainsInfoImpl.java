@@ -1,12 +1,12 @@
 package com.ltcode.capitalgainstaxcalculator.calculator;
 
 import com.ltcode.capitalgainstaxcalculator.transaction.Currency;
-import com.ltcode.capitalgainstaxcalculator.transaction.joined.JoinedTransactions;
+import com.ltcode.capitalgainstaxcalculator.transaction.joined.JoinedTransaction;
 
 
 public final class SoldStockGainsInfoImpl {
 
-    private JoinedTransactions joinedTransactions;
+    private JoinedTransaction joinedTransaction;
     private Currency currency;
 
 

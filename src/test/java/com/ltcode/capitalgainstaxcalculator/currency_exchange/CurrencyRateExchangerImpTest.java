@@ -17,13 +17,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class CurrencyExchangerImpTest {
+class CurrencyRateExchangerImpTest {
 
-    CurrencyExchanger exchanger;
+    CurrencyRateExchanger exchanger;
 
     @BeforeAll
     void setUp() {
-        exchanger = new CurrencyExchangerImp(
+        exchanger = new CurrencyRateExchangerImp(
                 Currency.PLN,
                 Path.of(TestSettings.SRC_TEST_DATA));
     }

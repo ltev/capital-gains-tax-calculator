@@ -1,12 +1,8 @@
 package com.ltcode.capitalgainstaxcalculator.settings;
 
 import com.ltcode.capitalgainstaxcalculator.transaction.TransactionData;
-
 import static com.ltcode.capitalgainstaxcalculator.transaction.TransactionData.*;
-
-import java.math.RoundingMode;
 import java.nio.file.Path;
-import java.time.Period;
 
 public class Settings {
 
@@ -18,18 +14,19 @@ public class Settings {
 
     // == WRITE FILES ==
 
-    public static final Path GENERATED_DATA_PATH = Path.of("data_generated");
-    public static final String TRANSACTIONS_FILE_NAME = "transactions";
-
-    public static final String JOINED_TRANSACTIONS_FILE_NAME = "joined_transactions";
-
-    public static final String DIVIDEND_TRANSACTIONS_FILE_NAME = "dividend";
-
-    public static final Object GAINS_FILE_NAME = "stock_gains";
-
-    public static final Object SUMMARY_FILE_NAME = "summary";
-
     public static final String CSV_FILE_TYPE = ".csv";
+    public static final Path GENERATED_DATA_PATH = Path.of("data_generated");
+    public static final String TRANSACTIONS_FILE_NAME = "transactions" + CSV_FILE_TYPE;
+
+    public static final String JOINED_TRANSACTIONS_FILE_NAME = "joined_transactions" + CSV_FILE_TYPE;;
+
+    public static final String DIVIDEND_TRANSACTIONS_FILE_NAME = "dividend" + CSV_FILE_TYPE;;
+
+    public static final String GAINS_FILE_NAME = "stock_gains" + CSV_FILE_TYPE;;
+
+    public static final String SUMMARY_FILE_NAME = "summary.txt";
+
+
 
     public static final char CSV_SEPARATOR = ',';
 
@@ -58,14 +55,15 @@ public class Settings {
     };
 
     public static final TransactionData[] CSV_JOINED_TRANSACTION_WRITE_ORDER = new TransactionData[] {
-            SUM_OF_BUYS_VALUE,
-            PROFIT,
+            DATE_TIME,
+            TICKER,
+            PRODUCT,
+            TYPE,
+            QUANTITY,
+            PRICE_PER_SHARE,
+            VALUE,
+            COMMISSION,
             CURRENCY
     };
-
-
-    public static final Period DATA_SHIFT = Period.ZERO;
-    public static final int PRECISION = 0;
-    public static final RoundingMode ROUNDING_MODE = RoundingMode.HALF_UP;
 
 }

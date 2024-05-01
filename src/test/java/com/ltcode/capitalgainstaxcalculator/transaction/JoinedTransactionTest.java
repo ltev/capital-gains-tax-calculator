@@ -3,7 +3,7 @@ package com.ltcode.capitalgainstaxcalculator.transaction;
 import com.ltcode.capitalgainstaxcalculator.exception.InvalidDateOrderException;
 import com.ltcode.capitalgainstaxcalculator.exception.InvalidTypeException;
 import com.ltcode.capitalgainstaxcalculator.exception.InvalidQuantityException;
-import com.ltcode.capitalgainstaxcalculator.transaction.joined.JoinedTransactions;
+import com.ltcode.capitalgainstaxcalculator.transaction.joined.JoinedTransaction;
 import com.ltcode.capitalgainstaxcalculator.transaction.type.TransactionType;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -15,7 +15,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 
-class JoinedTransactionsTest {
+class JoinedTransactionTest {
 
     static BuySellTransaction sellTransaction;
     static BuySellTransaction buyTransaction1;
@@ -58,13 +58,13 @@ class JoinedTransactionsTest {
         BuySellTransaction sell = new BuySellTransactionBuilder(sellTransaction).setType(TransactionType.BUY).build();
         BuySellTransaction buy = new BuySellTransactionBuilder(buyTransaction1).setType(TransactionType.SELL).build();
 
-        assertThrows(InvalidTypeException.class, () -> new JoinedTransactions(sell, List.of(buyTransaction1, buyTransaction2)));
-        assertThrows(InvalidTypeException.class, () -> new JoinedTransactions(sellTransaction, List.of(buy, buyTransaction2)));
+        assertThrows(InvalidTypeException.class, () -> new JoinedTransaction(sell, List.of(buyTransaction1, buyTransaction2)));
+        assertThrows(InvalidTypeException.class, () -> new JoinedTransaction(sellTransaction, List.of(buy, buyTransaction2)));
     }
 
     @Test
     void quantityAndOrderCheckTest_Valid() {
-        var info = new JoinedTransactions(sellTransaction, List.of(buyTransaction1, buyTransaction2));
+        var info = new JoinedTransaction(sellTransaction, List.of(buyTransaction1, buyTransaction2));
     }
 
     @Test
@@ -78,7 +78,7 @@ class JoinedTransactionsTest {
                 .setValue(new BigDecimal("11"))
                 .setCurrency(Currency.USD)
                 .build();
-        assertThrows(InvalidQuantityException.class, () -> new JoinedTransactions(sellTransaction, List.of(buyTransaction1, buyTransaction2)));
+        assertThrows(InvalidQuantityException.class, () -> new JoinedTransaction(sellTransaction, List.of(buyTransaction1, buyTransaction2)));
     }
 
     @Test
@@ -92,6 +92,6 @@ class JoinedTransactionsTest {
                 .setValue(new BigDecimal("12"))
                 .setCurrency(Currency.USD)
                 .build();
-        assertThrows(InvalidDateOrderException.class, () -> new JoinedTransactions(sellTransaction, List.of(buyTransaction2, buyTransaction1)));
+        assertThrows(InvalidDateOrderException.class, () -> new JoinedTransaction(sellTransaction, List.of(buyTransaction2, buyTransaction1)));
     }
 }

@@ -217,6 +217,7 @@ public class TestSettings {
                 .setPricePerShare(pricePerShare)
                 .setValue(value)
                 .setCurrency(currency)
+                .setCommission(BigDecimal.ZERO)
                 .build();
     }
 

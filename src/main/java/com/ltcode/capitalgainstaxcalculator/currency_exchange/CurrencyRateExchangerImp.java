@@ -5,15 +5,13 @@ import com.ltcode.capitalgainstaxcalculator.exception.CurrencyExchangeRateReader
 import com.ltcode.capitalgainstaxcalculator.exception.ExchangeRateNotFoundException;
 import com.ltcode.capitalgainstaxcalculator.transaction.Currency;
 
-import javax.swing.plaf.synth.SynthOptionPaneUI;
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-public class CurrencyExchangerImp implements CurrencyExchanger{
+public class CurrencyRateExchangerImp implements CurrencyRateExchanger {
 
     private final Currency toCurrency;
     /**
@@ -25,7 +23,7 @@ public class CurrencyExchangerImp implements CurrencyExchanger{
      */
     private final Map<Currency, Map<LocalDate, BigDecimal>> fromCurrencyMap;
 
-    public CurrencyExchangerImp(Currency toCurrency, Path dirPath) {
+    public CurrencyRateExchangerImp(Currency toCurrency, Path dirPath) {
         this.toCurrency = toCurrency;
         this.dirPath = dirPath;
         this.fromCurrencyMap = new HashMap<>();

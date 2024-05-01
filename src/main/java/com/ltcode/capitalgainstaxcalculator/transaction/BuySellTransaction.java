@@ -1,6 +1,6 @@
 package com.ltcode.capitalgainstaxcalculator.transaction;
 
-import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyExchanger;
+import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyRateExchanger;
 import com.ltcode.capitalgainstaxcalculator.exception.InvalidQuantityException;
 import com.ltcode.capitalgainstaxcalculator.exception.TransactionInfoException;
 import com.ltcode.capitalgainstaxcalculator.settings.Settings;
@@ -106,17 +106,12 @@ public final class BuySellTransaction extends Transaction {
         return commission;
     }
 
-    public BigDecimal getCommission(CurrencyExchanger exchanger, Period periodShift, int precision, RoundingMode roundingMode) {
+    public BigDecimal getCommission(CurrencyRateExchanger exchanger, Period periodShift, int precision, RoundingMode roundingMode) {
         return currency == exchanger.getToCurrency()
                 ? commission
                 : commission.multiply(
                         exchanger.getRateUpTo7DaysPrevious(currency, getDateTime().toLocalDate().plus(periodShift)))
                 .setScale(precision, roundingMode);     // RATE FROM THE PREVIOUS DAY
-    }
-
-    @Override
-    public TransactionType getType() {
-        return type;
     }
 
     public BigDecimal getPricePerShare() {

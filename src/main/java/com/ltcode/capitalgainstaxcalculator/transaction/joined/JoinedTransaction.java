@@ -1,6 +1,6 @@
 package com.ltcode.capitalgainstaxcalculator.transaction.joined;
 
-import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyExchanger;
+import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyRateExchanger;
 import com.ltcode.capitalgainstaxcalculator.exception.*;
 import com.ltcode.capitalgainstaxcalculator.transaction.BuySellTransaction;
 import com.ltcode.capitalgainstaxcalculator.transaction.TransactionData;
@@ -19,18 +19,18 @@ import java.util.List;
  * For every sell transaction, matching buy transaction / transactions
  * For some brokers the sell time can happen before the buy time but at the same day - 'isTimeMatching'
  */
-public class JoinedTransactions {
+public class JoinedTransaction {
 
     private final BuySellTransaction sell;
     private final List<BuySellTransaction> buyTransactionList;
 
-    public JoinedTransactions(BuySellTransaction sellTransaction, List<BuySellTransaction> buyTransactionList) {
+    public JoinedTransaction(BuySellTransaction sellTransaction, List<BuySellTransaction> buyTransactionList) {
         this(sellTransaction, buyTransactionList, true);
     }
 
-    public JoinedTransactions(BuySellTransaction sellTransaction,
-                              List<BuySellTransaction> buyTransactionList,
-                              boolean isTimeMatching) {
+    public JoinedTransaction(BuySellTransaction sellTransaction,
+                             List<BuySellTransaction> buyTransactionList,
+                             boolean isTimeMatching) {
         this.sell = sellTransaction;
         this.buyTransactionList = new ArrayList<>(buyTransactionList);
         checkValidity(isTimeMatching);
@@ -109,7 +109,7 @@ public class JoinedTransactions {
         return value;
     }
 
-    public BigDecimal getTotalBuyValue(CurrencyExchanger exchanger, Period dateShift, int precision, RoundingMode roundingMode) {
+    public BigDecimal getTotalBuyValue(CurrencyRateExchanger exchanger, Period dateShift, int precision, RoundingMode roundingMode) {
         BigDecimal value = BigDecimal.ZERO;
         for (BuySellTransaction buy : buyTransactionList) {
             value = value.add(buy.getValue(exchanger, dateShift, precision, roundingMode));
@@ -117,7 +117,7 @@ public class JoinedTransactions {
         return value;
     }
 
-    public BigDecimal getTotalBuySellCommission(CurrencyExchanger exchanger, Period dateShift, int precision, RoundingMode roundingMode) {
+    public BigDecimal getTotalBuySellCommission(CurrencyRateExchanger exchanger, Period dateShift, int precision, RoundingMode roundingMode) {
         BigDecimal commission = sell.getCommission(exchanger, dateShift, precision, roundingMode);
         for (BuySellTransaction buy : buyTransactionList) {
             commission = commission.add(buy.getCommission(exchanger, dateShift, precision, roundingMode));
@@ -137,7 +137,7 @@ public class JoinedTransactions {
         return sell.getValue().subtract(getTotalBuyValue());
     }
 
-    public BigDecimal getProfit(CurrencyExchanger exchanger, Period dataShift, int precistion, RoundingMode roundingMode) {
+    public BigDecimal getProfit(CurrencyRateExchanger exchanger, Period dataShift, int precistion, RoundingMode roundingMode) {
         return sell.getValue(exchanger, dataShift, precistion, roundingMode)
                 .subtract(getTotalBuyValue(exchanger, dataShift, precistion, roundingMode))
                 .subtract(getTotalBuySellCommission(exchanger, dataShift, precistion, roundingMode));
@@ -171,7 +171,7 @@ public class JoinedTransactions {
      * simpleTransactionOrder will be written first
      */
     public String generateCsvLine(TransactionData[] order,
-                                  CurrencyExchanger exchanger,
+                                  CurrencyRateExchanger exchanger,
                                   Period dataShift,
                                   int precision,
                                   RoundingMode roundingMode) {

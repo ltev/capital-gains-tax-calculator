@@ -12,12 +12,11 @@ public class StockGainsInfo {
     private final String ticker;
 
     private final String product;
-
     private final Currency currency;
     private BigDecimal totalBuyValue;
     private BigDecimal totalSellValue;
-
-    private BigDecimal totalCommission;
+    private BigDecimal totalBuyCommission;
+    private BigDecimal totalSellCommission;
 
     public StockGainsInfo(int year, String ticker, String product, Currency currency) {
         this.year = year;
@@ -26,7 +25,8 @@ public class StockGainsInfo {
         this.currency = currency;
         this.totalBuyValue = new BigDecimal(0);
         this.totalSellValue = new BigDecimal(0);
-        this.totalCommission = new BigDecimal(0);
+        this.totalBuyCommission = new BigDecimal(0);
+        this.totalSellCommission = new BigDecimal(0);
     }
 
     public int getYear() {
@@ -53,8 +53,16 @@ public class StockGainsInfo {
         return totalSellValue;
     }
 
-    public BigDecimal getTotalCommission() {
-        return totalCommission;
+    public BigDecimal getTotalBuyCommission() {
+        return totalBuyCommission;
+    }
+
+    public BigDecimal getTotalSellCommission() {
+        return totalSellCommission;
+    }
+
+    public BigDecimal getTotalBuySellCommission() {
+        return getTotalBuyCommission().add(getTotalSellCommission());
     }
 
 
@@ -67,12 +75,16 @@ public class StockGainsInfo {
         this.totalSellValue = this.totalSellValue.add(sellValue);
     }
 
-    void addToTotalBuySellCommission(BigDecimal commission) {
-        this.totalCommission = this.totalCommission.add(commission);
+    void addToTotalBuyCommission(BigDecimal commission) {
+        this.totalBuyCommission = this.totalBuyCommission.add(commission);
+    }
+
+    void addToTotalSellCommission(BigDecimal commission) {
+        this.totalSellCommission = this.totalSellCommission.add(commission);
     }
 
     public BigDecimal getTotalProfitValue() {
-        return totalSellValue.subtract(totalBuyValue).subtract(totalCommission);
+        return totalSellValue.subtract(totalBuyValue).subtract(getTotalBuySellCommission());
     }
 
     public String generateCsvLine() {
@@ -85,7 +97,7 @@ public class StockGainsInfo {
         data[2] = "\"" + product + "\"";
         data[3] = totalSellValue;
         data[4] = totalBuyValue;
-        data[5] = totalCommission;
+        data[5] = getTotalBuySellCommission();
         data[6] = getTotalProfitValue();
         data[7] = currency;
 
