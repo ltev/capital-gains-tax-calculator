@@ -26,7 +26,7 @@ public class Main {
         String degiro_account_file = "account_degiro.csv";
 
         // all transactions
-        //List<? extends Transaction> transactionList = TransactionReader.read(BROKER,Settings.TRANSACTIONS_DATA_PATH.resolve(degiro_transactions_file));
+        List<? extends Transaction> transactionList = TransactionReader.read(BROKER,Settings.TRANSACTIONS_DATA_PATH.resolve(degiro_transactions_file));
 
 
         // all transactions of one specific automatic degiro fund
@@ -38,12 +38,12 @@ public class Main {
 
         // dividends
 
-        List<? extends Transaction> transactionList = TransactionReader.readDividendList(
-                        BROKER,
-                        Settings.TRANSACTIONS_DATA_PATH.resolve(degiro_account_file)
-        );
+        //List<? extends Transaction> transactionList = TransactionReader.readDividendList(
+        //                BROKER,
+        //                Settings.TRANSACTIONS_DATA_PATH.resolve(degiro_account_file)
+        //);
 
-        transactionList.sort(Comparator.comparing((t) -> t.getDateTime()));
+        //transactionList.sort(Comparator.comparing((t) -> t.getDateTime()));
         System.out.println("size: " + transactionList.size());
 
 

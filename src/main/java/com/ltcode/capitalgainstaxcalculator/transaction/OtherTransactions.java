@@ -12,13 +12,4 @@ public class OtherTransactions extends Transaction {
     public OtherTransactions(LocalDateTime dateTime, TransactionType type, BigDecimal value, Currency currency) {
         super(dateTime, type, value, currency);
     }
-
-    public String generateCsvLine() {
-        return generateCsvLine(Settings.CSV_TRANSACTION_WRITE_ORDER);
-    }
-
-    @Override
-    public String generateCsvLine(TransactionData[] order) {
-        return generateCsvLine(new HashMap<>(), order);
-    }
 }

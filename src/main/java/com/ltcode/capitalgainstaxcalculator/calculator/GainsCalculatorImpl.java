@@ -73,6 +73,7 @@ public class GainsCalculatorImpl implements GainsCalculator {
         TransactionUtils.checkTransactionsValidity(TRANSACTIONS);
         this.joiner = new SellBuyJoiner(this.TRANSACTIONS, PRECISION, ROUNDING_MODE);
         this.joinedTransactionList = joiner.join();
+        System.out.println("SIZE: " + TRANSACTIONS.size());
         this.dividendTransactionsList = new ArrayList<>();
         this.yearStockGainsMap = new LinkedHashMap<>();
         this.yearAllStocksGainsMap = new LinkedHashMap<>();
@@ -126,8 +127,7 @@ public class GainsCalculatorImpl implements GainsCalculator {
 
         Write.generateJoinedTransactionsCsvFile(
                 joinedTransactionList,
-                EXCHANGER,
-                COUNTRY_INFO
+                valuesConverter
         );
 
         Write.generateYearStockGainsMapCsvFile(yearStockGainsMap);

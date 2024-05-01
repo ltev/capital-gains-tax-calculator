@@ -66,12 +66,16 @@ public class TransactionValuesConverter {
         return commission;
     }
 
+    public BigDecimal getTotalBuySellCommission(JoinedTransaction joinedTransaction) {
+        return getCommission(joinedTransaction.getSellTransaction())
+                .add(getTotalBuyCommission(joinedTransaction));
+    }
+
     public BigDecimal getProfit(JoinedTransaction joinedTransaction) {
         Transaction sell = joinedTransaction.getSellTransaction();
         return getValue(sell)
                 .subtract(getTotalBuyValue(joinedTransaction))
-                .subtract(getCommission(sell))
-                .subtract(getTotalBuyCommission(joinedTransaction));
+                .subtract(getTotalBuySellCommission(joinedTransaction));
     }
 
     // == PRIVATE METHODS ==
@@ -83,4 +87,5 @@ public class TransactionValuesConverter {
                     .multiply(getRateAfterShiftUpTo7DaysPrevious(transaction))
                     .setScale(countryInfo.getPrecision(), countryInfo.getRoundingMode());
     }
+
 }

@@ -38,19 +38,4 @@ public class SplitTransaction extends Transaction {
     public BigDecimal getQuantity() {
         return quantity;
     }
-
-    @Override
-    public String generateCsvLine() {
-        return generateCsvLine(Settings.CSV_TRANSACTION_WRITE_ORDER);
-    }
-
-    @Override
-    public String generateCsvLine(TransactionData[] order) {
-        return generateCsvLine(new HashMap<>() {
-            {
-                put(TransactionData.TICKER, ticker);
-            }
-        }, order);
-    }
-
 }

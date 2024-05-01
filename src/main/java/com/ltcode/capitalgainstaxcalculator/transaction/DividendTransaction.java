@@ -1,14 +1,12 @@
 package com.ltcode.capitalgainstaxcalculator.transaction;
 
 import com.ltcode.capitalgainstaxcalculator.exception.InvalidQuantityException;
-import com.ltcode.capitalgainstaxcalculator.settings.Settings;
 import com.ltcode.capitalgainstaxcalculator.transaction.type.TransactionType;
 import com.ltcode.capitalgainstaxcalculator.utils.Utils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 
 public class DividendTransaction extends Transaction {
 
@@ -26,22 +24,6 @@ public class DividendTransaction extends Transaction {
         this.product = product;
         this.taxPaid = taxPaid;
         checkValidity();
-    }
-
-    @Override
-    public String generateCsvLine() {
-        return generateCsvLine(Settings.CSV_TRANSACTION_WRITE_ORDER);
-    }
-
-    @Override
-    public String generateCsvLine(TransactionData[] order) {
-        return generateCsvLine(new HashMap<>() {
-            {
-                put(TransactionData.PRODUCT, product);
-                put(TransactionData.TICKER, ticker);
-                put(TransactionData.TAX_PAID, taxPaid);
-            }
-        }, order);
     }
 
     private void checkValidity() {

@@ -14,18 +14,7 @@ import java.util.HashMap;
  */
 public class DifferentTransaction extends Transaction {
 
-
     public DifferentTransaction(LocalDateTime dateTime, TransactionType type, BigDecimal value, Currency currency) {
         super(dateTime, type, value, currency);
-    }
-
-    @Override
-    public String generateCsvLine() {
-        return generateCsvLine(Settings.CSV_TRANSACTION_WRITE_ORDER);
-    }
-
-    @Override
-    public String generateCsvLine(com.ltcode.capitalgainstaxcalculator.transaction.TransactionData[] order) {
-        return generateCsvLine(new HashMap<>(), order);
     }
 }

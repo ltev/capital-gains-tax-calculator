@@ -44,8 +44,6 @@ public final class BuySellTransaction extends Transaction {
         this(type, dateTime, ticker, product, quantity, pricePerShare, value, BigDecimal.ZERO, currency, quantity);
     }
 
-
-
     public BuySellTransaction(TransactionType type, LocalDateTime dateTime, String ticker, String product,
                               BigDecimal quantity, BigDecimal pricePerShare, BigDecimal value,
                               BigDecimal commission, Currency currency) {
@@ -106,14 +104,6 @@ public final class BuySellTransaction extends Transaction {
         return commission;
     }
 
-    public BigDecimal getCommission(CurrencyRateExchanger exchanger, Period periodShift, int precision, RoundingMode roundingMode) {
-        return currency == exchanger.getToCurrency()
-                ? commission
-                : commission.multiply(
-                        exchanger.getRateUpTo7DaysPrevious(currency, getDateTime().toLocalDate().plus(periodShift)))
-                .setScale(precision, roundingMode);     // RATE FROM THE PREVIOUS DAY
-    }
-
     public BigDecimal getPricePerShare() {
         return pricePerShare;
     }
@@ -124,23 +114,6 @@ public final class BuySellTransaction extends Transaction {
 
     public BigDecimal getOriginalQuantity() {
         return originalQuantity;
-    }
-
-    @Override
-    public String generateCsvLine() {
-        return generateCsvLine(Settings.CSV_TRANSACTION_WRITE_ORDER);
-    }
-
-    public String generateCsvLine(TransactionData[] order) {
-        return generateCsvLine(new HashMap<>() {
-            {
-                put(TransactionData.TICKER, ticker);
-                put(TransactionData.PRODUCT, product);
-                put(TransactionData.PRICE_PER_SHARE, pricePerShare);
-                put(TransactionData.QUANTITY, quantity);
-                put(TransactionData.COMMISSION, commission);
-            }
-        }, order);
     }
 
     @Override

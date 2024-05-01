@@ -3,6 +3,7 @@ package com.ltcode.capitalgainstaxcalculator.data_reader.data_writer;
 import com.ltcode.capitalgainstaxcalculator.calculator.LeftStockInfo;
 import com.ltcode.capitalgainstaxcalculator.calculator.StockGainsInfo;
 import com.ltcode.capitalgainstaxcalculator.country_info.CountryTaxCalculationInfo;
+import com.ltcode.capitalgainstaxcalculator.csv_creator.CsvCreator;
 import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyRateExchanger;
 import com.ltcode.capitalgainstaxcalculator.settings.Settings;
 import com.ltcode.capitalgainstaxcalculator.transaction.DividendTransaction;
@@ -51,7 +52,7 @@ public class Write {
 
             // transaction
             for (Transaction t : transactions) {
-                w.append(t.generateCsvLine(order));
+                w.append(CsvCreator.get(t, order));
                 w.append('\n');
             }
         } catch (IOException e) {
@@ -68,24 +69,17 @@ public class Write {
     }
 
     public static void generateJoinedTransactionsCsvFile(List<JoinedTransaction> joinedTransactionList,
-                                                         CurrencyRateExchanger exchanger,
-                                                         CountryTaxCalculationInfo countryInfo) {
+                                                         TransactionValuesConverter valuesConverter) {
         generateJoinedTransactionsCsvFile(
                 joinedTransactionList,
                 Settings.CSV_JOINED_TRANSACTION_WRITE_ORDER,
-                exchanger,
-                countryInfo.getDateShift(),
-                countryInfo.getPrecision(),
-                countryInfo.getRoundingMode(),
+                valuesConverter,
                 GENERATED_DATA_PATH.resolve(Settings.JOINED_TRANSACTIONS_FILE_NAME));
     }
 
     public static void generateJoinedTransactionsCsvFile(List<JoinedTransaction> joinedTransactionList,
                                                          TransactionData[] order,
-                                                         CurrencyRateExchanger exchanger,
-                                                         Period dateShift,
-                                                         int precision,
-                                                         RoundingMode roundingMode,
+                                                         TransactionValuesConverter valuesConverter,
                                                          Path path) {
         /*
                 String[] extendedData = new String[] {
@@ -131,8 +125,12 @@ public class Write {
                     .append("\n");
 
             // transactions
+            System.out.println("XXXXXXXXXX " + joinedTransactionList.size());
             for (JoinedTransaction jt : joinedTransactionList) {
-                w.append(jt.generateCsvLine(order, exchanger, dateShift, precision, roundingMode));
+                System.out.println("hi");
+                String CSV = CsvCreator.get(jt, order, valuesConverter);
+                System.out.println(CSV);
+                w.append(CsvCreator.get(jt, order, valuesConverter));
                 // check if joined transaction has not matching times
                 if (jt.isSellTimeInvalid()) {
                     w.append(CSV_SEPARATOR)
@@ -192,7 +190,7 @@ public class Write {
 
             // transaction csv representation
             for (DividendTransaction t : dividendList) {
-                String sb = t.generateCsvLine(order)
+                String sb = CsvCreator.get(t, order)
                         + CSV_SEPARATOR
                         + valuesConverter.getRateAfterShiftUpTo7DaysPrevious(t)
                         + CSV_SEPARATOR
