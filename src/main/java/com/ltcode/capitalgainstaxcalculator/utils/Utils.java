@@ -27,7 +27,6 @@ public class Utils {
         return -1;
     }
 
-
     public static void checkForNull(Object o, String parameterName) {
         if (o == null) {
             throw new InvalidTypeException(parameterName + " can not be null!");

@@ -1,17 +1,18 @@
 package com.ltcode.capitalgainstaxcalculator;
 import com.ltcode.capitalgainstaxcalculator.broker.Broker;
+import com.ltcode.capitalgainstaxcalculator.broker.FileInfo;
+import com.ltcode.capitalgainstaxcalculator.broker.FileType;
+import com.ltcode.capitalgainstaxcalculator.calculator.BaseGainsCalculator;
+import com.ltcode.capitalgainstaxcalculator.calculator.BaseGainsCalculatorImpl;
 import com.ltcode.capitalgainstaxcalculator.calculator.GainsCalculator;
 import com.ltcode.capitalgainstaxcalculator.calculator.GainsCalculatorImpl;
 import com.ltcode.capitalgainstaxcalculator.country_info.Country;
 import com.ltcode.capitalgainstaxcalculator.country_info.CountryTaxCalculationInfo;
-import com.ltcode.capitalgainstaxcalculator.data_reader.TransactionReader;
-import com.ltcode.capitalgainstaxcalculator.settings.Settings;
 import com.ltcode.capitalgainstaxcalculator.transaction.Currency;
-import com.ltcode.capitalgainstaxcalculator.transaction.Transaction;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Period;
-import java.util.Comparator;
-import java.util.List;
 
 public class Main {
 
@@ -26,8 +27,21 @@ public class Main {
         String degiro_account_file = "account_degiro.csv";
 
         // all transactions
-        List<? extends Transaction> transactionList = TransactionReader.read(BROKER,Settings.TRANSACTIONS_DATA_PATH.resolve(degiro_transactions_file));
+        // List<? extends Transaction> transactionList = TransactionReader.read(BROKER,Settings.TRANSACTIONS_DATA_PATH.resolve(degiro_transactions_file));
 
+        Path writeDirectory = Paths.get("D:\\workspace\\java\\CapitalGainsTaxCalculator", "end_data");
+
+        FileInfo degiroTransactions = new FileInfo(
+                Broker.DEGIRO,
+                FileType.TRANSACTIONS,
+                Paths.get("D:\\workspace\\java\\CapitalGainsTaxCalculator\\data\\transactions", "transactions_degiro.csv")
+        );
+
+        FileInfo degiroAccount = new FileInfo(
+                Broker.DEGIRO,
+                FileType.ACCOUNT,
+                Paths.get("D:\\workspace\\java\\CapitalGainsTaxCalculator\\data\\transactions", "account_degiro.csv")
+        );
 
         // all transactions of one specific automatic degiro fund
         /*
@@ -44,7 +58,7 @@ public class Main {
         //);
 
         //transactionList.sort(Comparator.comparing((t) -> t.getDateTime()));
-        System.out.println("size: " + transactionList.size());
+        //System.out.println("size: " + transactionList.size());
 
 
         // all transactions of all automatic degiro fund
@@ -53,10 +67,11 @@ public class Main {
 
 
         CountryTaxCalculationInfo polandInfo = CountryTaxCalculationInfo.getInstance(Country.POLAND);
-        GainsCalculator calculator = new GainsCalculatorImpl(polandInfo, transactionList);
-        calculator.calculate();
-        calculator.generateTransactionsCsvFile();
+        GainsCalculator calculator = new GainsCalculatorImpl(polandInfo);
+        calculator.calculate(degiroTransactions, degiroAccount);
+        calculator.generateTransactionsCsvFile(writeDirectory);
 
+        /*
         System.out.println("GAINS BY YEAR:");
         System.out.println(calculator.getTotalGains(2018));
         System.out.println(calculator.getTotalGains(2019));
@@ -70,7 +85,7 @@ public class Main {
         System.out.println(calculator.getTotalDividends(2021));
         System.out.println(calculator.getTotalDividends(2022));
         System.out.println(calculator.getTotalDividends(2023));
-
+*/
         // DIVIDEND
         /*
         Write.generateDividendTransactionsCsvFile(

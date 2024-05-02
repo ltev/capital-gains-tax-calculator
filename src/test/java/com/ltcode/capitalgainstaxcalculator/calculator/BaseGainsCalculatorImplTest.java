@@ -13,17 +13,16 @@ import static com.ltcode.capitalgainstaxcalculator.transaction.Currency.USD;
 import static org.junit.jupiter.api.Assertions.*;
 
 class
-GainsCalculatorImplTest {
+BaseGainsCalculatorImplTest {
 
-    GainsCalculatorImpl calculator;
+    BaseGainsCalculatorImpl calculator;
 
     @BeforeEach
     void setUp() {
-        calculator = new GainsCalculatorImpl(
-                new CountryTaxCalculationInfo(null, USD, 2, RoundingMode.HALF_UP, Period.ofDays(0)),
-                TestSettings.getTransactionList(TestSettings.SOURCE.HERE)
+        calculator = new BaseGainsCalculatorImpl(
+                new CountryTaxCalculationInfo(null, USD, 2, RoundingMode.HALF_UP, Period.ofDays(0))
         );
-        calculator.calculate();
+        calculator.calculate(TestSettings.getTransactionList(TestSettings.SOURCE.HERE));
     }
 
     @Test

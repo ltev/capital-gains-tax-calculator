@@ -29,8 +29,16 @@ public class Write {
     public static void generateTransactionsCsvFile(List<? extends Transaction> transactions) {
         generateTransactionsCsvFile(
                 transactions,
-                Settings.CSV_TRANSACTION_WRITE_ORDER,
                 GENERATED_DATA_PATH.resolve(Settings.TRANSACTIONS_FILE_NAME)
+        );
+    }
+
+    public static void generateTransactionsCsvFile(List<? extends Transaction> transactions,
+                                                   Path path) {
+        generateTransactionsCsvFile(
+                transactions,
+                Settings.CSV_TRANSACTION_WRITE_ORDER,
+                path
         );
     }
 
@@ -72,10 +80,21 @@ public class Write {
                                                          TransactionValuesConverter valuesConverter) {
         generateJoinedTransactionsCsvFile(
                 joinedTransactionList,
+                valuesConverter,
+                GENERATED_DATA_PATH.resolve(Settings.JOINED_TRANSACTIONS_FILE_NAME)
+        );
+    }
+
+    public static void generateJoinedTransactionsCsvFile(List<JoinedTransaction> joinedTransactionList,
+                                                         TransactionValuesConverter valuesConverter,
+                                                         Path path) {
+        generateJoinedTransactionsCsvFile(
+                joinedTransactionList,
                 Settings.CSV_JOINED_TRANSACTION_WRITE_ORDER,
                 valuesConverter,
-                GENERATED_DATA_PATH.resolve(Settings.JOINED_TRANSACTIONS_FILE_NAME));
-    }
+                path
+        );
+    };
 
     public static void generateJoinedTransactionsCsvFile(List<JoinedTransaction> joinedTransactionList,
                                                          TransactionData[] order,
@@ -125,11 +144,8 @@ public class Write {
                     .append("\n");
 
             // transactions
-            System.out.println("XXXXXXXXXX " + joinedTransactionList.size());
             for (JoinedTransaction jt : joinedTransactionList) {
-                System.out.println("hi");
                 String CSV = CsvCreator.get(jt, order, valuesConverter);
-                System.out.println(CSV);
                 w.append(CsvCreator.get(jt, order, valuesConverter));
                 // check if joined transaction has not matching times
                 if (jt.isSellTimeInvalid()) {
@@ -155,9 +171,19 @@ public class Write {
                                                            TransactionValuesConverter valuesConverter) {
         generateDividendTransactionsCsvFile(
                 dividendList,
-                Settings.CSV_DIVIDEND_WRITE_ORDER,
                 valuesConverter,
                 GENERATED_DATA_PATH.resolve(Settings.DIVIDEND_TRANSACTIONS_FILE_NAME)
+        );
+    }
+
+    public static void generateDividendTransactionsCsvFile(List<DividendTransaction> dividendList,
+                                                           TransactionValuesConverter valuesConverter,
+                                                           Path path) {
+        generateDividendTransactionsCsvFile(
+                dividendList,
+                Settings.CSV_DIVIDEND_WRITE_ORDER,
+                valuesConverter,
+                path
         );
     }
 

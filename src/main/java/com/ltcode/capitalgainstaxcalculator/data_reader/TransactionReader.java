@@ -548,7 +548,7 @@ public class TransactionReader {
                 String[] arr = getSplit(line);
 
                 if (arr.length != 11 && arr.length != 12) {
-                    throw new TransactionInfoException("Array length after splitting line should be always 18 or 19 but is: " + arr.length);
+                    throw new TransactionInfoException("Array length after splitting line should be always 11 or 12 but is: " + arr.length);
                 }
 
                 String ISIN = arr[ACCOUNT_INDEX_MAP.get(FileData.ISIN)];
