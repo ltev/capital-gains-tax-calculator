@@ -11,7 +11,22 @@ public record DividendData(int lineNumber,
                            String ticker,
                            String product,
                            TransactionType type,
-                           BigDecimal value,
+                           BigDecimal dividendBeforeTaxes,
                            BigDecimal taxPaid,
+                           BigDecimal dividendAfterTaxes,
                            Currency currency) {
+
+    public static DividendData update(DividendData data, BigDecimal dividendBeforeTaxes, BigDecimal taxPaid, BigDecimal dividendAfterTaxes) {
+        return new DividendData(
+                data.lineNumber,
+                data.dateTime,
+                data.ticker,
+                data.product,
+                data.type,
+                dividendBeforeTaxes,
+                taxPaid,
+                dividendAfterTaxes,
+                data.currency
+        );
+    }
 }

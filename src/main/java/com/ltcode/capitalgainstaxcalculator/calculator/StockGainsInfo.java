@@ -7,10 +7,8 @@ import java.math.BigDecimal;
 public class StockGainsInfo {
 
     public static final String CSV_HEADER = "year,ticker,product,sell value, buy value, commission, profit, currency";
-
     private final int year;
     private final String ticker;
-
     private final String product;
     private final Currency currency;
     private BigDecimal totalBuyValue;

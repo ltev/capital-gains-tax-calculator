@@ -9,7 +9,6 @@ import com.ltcode.capitalgainstaxcalculator.transaction.BuySellTransactionBuilde
 import com.ltcode.capitalgainstaxcalculator.transaction.type.TransactionType;
 import com.ltcode.capitalgainstaxcalculator.utils.Utils;
 
-import javax.swing.plaf.synth.SynthOptionPaneUI;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -101,13 +100,16 @@ public class TransactionReader {
             }
         }
 
-        abstract List<Transaction> getTransactions(Path path);
+        /**
+         * File provides information about dividends, fees, and / or buy sell stocks transactions
+         */
+        abstract List<Transaction> readAccountFile(Path path);
 
-        abstract List<DividendTransaction> getDividendList(Path path);
+        /**
+         * File provides information about buy sell stocks transactions
+         */
+        abstract List<Transaction> readTransactionsFile(Path path);
 
-        abstract List<Transaction> getTransactions(Path path, String tickerOrISIN);
-
-        abstract List<Transaction> getAutomaticFundTransactions(Path path);
     }
 
 
@@ -117,25 +119,15 @@ public class TransactionReader {
     private static class RevolutTransactionReader extends BrokerReader {
 
         @Override
-        List<Transaction> getTransactions(Path path) {
+        List<Transaction> readAccountFile(Path path) {
             return read(path);
         }
 
         /**
-         * DividendList will be read together with buy / sell operations from account file in getTransactions() method
+         * DividendList will be read together with buy / sell operations from account file
          */
         @Override
-        List<DividendTransaction> getDividendList(Path path) {
-            throw new RuntimeException("Not in use.");
-        }
-
-        @Override
-        List<Transaction> getTransactions(Path path, String tickerOrISIN) {
-            throw new RuntimeException("Not in use.");
-        }
-
-        @Override
-        List<Transaction> getAutomaticFundTransactions(Path path) {
+        List<Transaction> readTransactionsFile(Path path) {
             throw new RuntimeException("Not in use.");
         }
 
@@ -153,7 +145,6 @@ public class TransactionReader {
         private static List<Transaction> read(Path path) {
             List<Transaction> transactionsList = new ArrayList<>();
             List<String> lines;
-            Split split = null;
 
             try {
                 lines = Files.readAllLines(path);
@@ -204,8 +195,9 @@ public class TransactionReader {
                             arr[1],
                             arr[1],             // product name and ticker the same - revolut does not give us more info in csv file
                             type,
+                            null,       // no value in file
+                            null,                   // no value in file
                             arr[5].length() == 0 ? null : new BigDecimal(getNumberFromCurrency(arr[5])),    // amount after taxes
-                            BigDecimal.ZERO,     // no value in dsv file
                             Currency.valueOf(arr[6])
                     );
                     t = TransactionBuilder.build(lideData);
@@ -329,6 +321,26 @@ public class TransactionReader {
      */
     private static class DegiroTransactionReader extends BrokerReader {
 
+        @Override
+        List<Transaction> readAccountFile(Path path) {
+            List<String> lines;
+            try {
+                lines = Files.readAllLines(path);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            List<Transaction> allLists = new ArrayList<>();
+            allLists.addAll(getAutomaticFundTransactions(lines));
+            allLists.addAll(getDividendList(lines));
+            allLists.sort(Comparator.comparing(Transaction::getDateTime));
+            return allLists;
+        }
+
+        @Override
+        List<Transaction> readTransactionsFile(Path path) {
+            return readBuySellTransactions(path);
+        }
+
         /**
          * Columns indexes of Degiro Account File
          */
@@ -344,31 +356,17 @@ public class TransactionReader {
             }
         };
 
-        @Override
-        List<Transaction> getTransactions(Path path) {
-            List<Transaction> list = read(path);
-            return list;
-        }
-
         /**
          * Reads dividends from file "account"
          * Looks for the key word 'dywidend' in description column
          */
-        @Override
-        List<DividendTransaction> getDividendList(Path path) {
+        List<DividendTransaction> getDividendList(List<String> lines) {
             Language LANGUAGE;
             String DIVIDEND_KEY_WORD;
             String DIVIDEND_TAX_KEY_WORD;
             List<DividendTransaction> dividendList = new ArrayList<>();
             List<DividendData> dividendDataList = new ArrayList<>();
             List<DividendData> taxPaidDataList = new ArrayList<>();
-            List<String> lines;
-
-            try {
-                lines = Files.readAllLines(path);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
 
             // get language
             LANGUAGE = Language.getLanguage(getSplit(lines.get(0)));
@@ -415,11 +413,12 @@ public class TransactionReader {
                         type,
                         value,
                         taxPaid,
+                        null,
                         currency
                 );
 
                 // Invalid values can happen in Degiro
-                if ((isDividend && Utils.isNegative(data.value()))
+                if ((isDividend && Utils.isNegative(data.dividendBeforeTaxes()))
                         || (isTaxPaid && Utils.isNegative(data.taxPaid()))) {
                     System.out.println("Problem on line: " + i);
                     System.out.println("Invalid values!");
@@ -448,13 +447,18 @@ public class TransactionReader {
                     }
                 }
 
-                dividendList.add(TransactionBuilder.build(dividend, taxPaid));
+                BigDecimal afterTaxes = dividend.dividendBeforeTaxes().subtract(taxPaid);
+                dividend = DividendData.update(dividend, dividend.dividendBeforeTaxes(), taxPaid, afterTaxes);
+                dividendList.add(TransactionBuilder.build(dividend));
             }
 
             return dividendList;
         }
 
-        @Override
+        /**
+         * DO NOT USE
+         * WORKS ONLY FOR AUTOMATIC FUND TICKER
+         */
         List<Transaction> getTransactions(Path path, String tickerOrISIN) {
             Language LANGUAGE;
 
@@ -528,17 +532,9 @@ public class TransactionReader {
             return transactions;
         }
 
-        @Override
-        List<Transaction> getAutomaticFundTransactions(Path path) {
+        List<Transaction> getAutomaticFundTransactions(List<String> lines) {
             Language LANGUAGE;
             List<Transaction> transactions = new ArrayList<>();
-            List<String> lines;
-
-            try {
-                lines = Files.readAllLines(path);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
 
             // get language
             LANGUAGE = Language.getLanguage(getSplit(lines.get(0)));
@@ -663,7 +659,7 @@ public class TransactionReader {
             return new Object[]{type, quantity, pricePerShare, currency};
         }
 
-        private static List<Transaction> read(Path path) {
+        private static List<Transaction> readBuySellTransactions(Path path) {
             List<Transaction> transactionsList = new ArrayList<>();
             List<String> lines;
 
@@ -836,28 +832,14 @@ public class TransactionReader {
 
     // == MAIN CLASS STATIC METHODS ==
 
-    public static List<Transaction> read(Broker broker, Path path) {
+    public static List<Transaction> readAccountFile(Broker broker, Path path) {
         BrokerReader reader = getBrokerReader(broker);
-        return reader.getTransactions(path);
+        return reader.readAccountFile(path);
     }
 
-    public static List<DividendTransaction> readDividendList(Broker broker, Path path) {
+    public static List<Transaction> readTransactionsFile(Broker broker, Path path) {
         BrokerReader reader = getBrokerReader(broker);
-        return reader.getDividendList(path);
-    }
-
-    /**
-     * DO NOT USE
-     *  Read all transactions of a one specific product WORKS ONLY FOR AUTOMATIC FUND BUY / SEEL TRANSACTIONS FOR DEGIRO!!!!!!
-     */
-    public static List<Transaction> readTransactions(Broker broker, Path path, String tickerOrISIN) {
-        BrokerReader reader = getBrokerReader(broker);
-        return reader.getTransactions(path, tickerOrISIN);
-    }
-
-    public static List<Transaction> readAutomaticFundTransactions(Broker broker, Path path) {
-        BrokerReader reader = getBrokerReader(broker);
-        return reader.getAutomaticFundTransactions(path);
+        return reader.readTransactionsFile(path);
     }
 
     // == PRIVATE HELPER METHODS ==
@@ -868,7 +850,4 @@ public class TransactionReader {
             case DEGIRO -> new DegiroTransactionReader();
         };
     }
-
-
-
 }

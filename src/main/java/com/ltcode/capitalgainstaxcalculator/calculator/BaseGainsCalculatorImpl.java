@@ -37,7 +37,7 @@ public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
     /**
      * year -> TotalGainsInfo
      */
-    private Map<Integer, StockGainsInfo> yearAllStocksGainsMap;
+    private Map<Integer, YearGainsInfo> yearGainsInfo;
 
     private Map<Integer, DividendGainsInfo> yearDividendGainsMap;
     private final Currency toCurrency;
@@ -55,11 +55,11 @@ public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
 
         // read transactions from file
         List<? extends Transaction> transactions = switch (fileInfo.getFileType()) {
-            case TRANSACTIONS -> TransactionReader.read(
+            case TRANSACTIONS -> TransactionReader.readTransactionsFile(
                     fileInfo.getBroker(),
                     fileInfo.getPath()
             );
-            case ACCOUNT -> TransactionReader.readAutomaticFundTransactions(
+            case ACCOUNT -> TransactionReader.readAccountFile(
                     fileInfo.getBroker(),
                     fileInfo.getPath()
             );
@@ -83,7 +83,7 @@ public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
         this.joinedTransactionList = joiner.join();
         this.dividendTransactionsList = new ArrayList<>();
         this.yearStockGainsMap = new LinkedHashMap<>();
-        this.yearAllStocksGainsMap = new LinkedHashMap<>();
+        this.yearGainsInfo = new LinkedHashMap<>();
         this.yearDividendGainsMap = new HashMap<>();
         calculateTotalStockGainsByYear();
         calculateTotalDividendGainsByYear();
@@ -105,11 +105,16 @@ public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
     }
 
     @Override
-    public StockGainsInfo getTotalGains(int year) {
-        if (! yearAllStocksGainsMap.containsKey(year)) {
+    public Map<Integer, YearGainsInfo> getTotalGains() {
+        return new LinkedHashMap<>(yearGainsInfo);
+    }
+
+    @Override
+    public YearGainsInfo getTotalGains(int year) {
+        if (! yearGainsInfo.containsKey(year)) {
             return null;
         }
-        return yearAllStocksGainsMap.get(year);
+        return yearGainsInfo.get(year);
     }
 
     @Override
@@ -172,7 +177,7 @@ public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
         }
 
         Write.generateCalculationSummaryTxtFile(
-                yearAllStocksGainsMap,
+                yearGainsInfo,
                 getLeftStocksList(),
                 joiner.getReport(),
                 directory.resolve(Settings.SUMMARY_FILE_NAME)
@@ -188,22 +193,20 @@ public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
      * year -> total sell value by stock
      */
     private void calculateTotalStockGainsByYear() {
-        String ALL_STOCKS_TICKER = "ALL STOCKS TOGETHER";
-
         for (var jt : joinedTransactionList) {
             var sell = jt.getSellTransaction();
             int year = sell.getDateTime().getYear();
-            StockGainsInfo allStocks;
+            YearGainsInfo allStocks;
             StockGainsInfo currStock;
 
-            if (yearAllStocksGainsMap.get(year) == null) {
-                yearAllStocksGainsMap.put(year, new StockGainsInfo(year, ALL_STOCKS_TICKER, ALL_STOCKS_TICKER, toCurrency));
+            if (yearGainsInfo.get(year) == null) {
+                yearGainsInfo.put(year, new YearGainsInfo(year, toCurrency));
                 yearStockGainsMap.put(year, new HashMap<>());
             }
             yearStockGainsMap.get(year).putIfAbsent(
                     sell.getTicker(), new StockGainsInfo(year, sell.getTicker(), sell.getProduct(), toCurrency));
 
-            allStocks = yearAllStocksGainsMap.get(year);
+            allStocks = yearGainsInfo.get(year);
             currStock = yearStockGainsMap.get(year).get(sell.getTicker());
 
             // add to total value

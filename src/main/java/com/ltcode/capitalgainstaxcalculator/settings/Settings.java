@@ -49,8 +49,9 @@ public class Settings {
             TICKER,
             PRODUCT,
             TYPE,
-            VALUE,
-            TAX_PAID,
+            DIVIDEND_BEFORE_TAXES,
+            TAXES_PAID,
+            DIVIDEND_AFTER_TAXES,
             CURRENCY
     };
 

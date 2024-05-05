@@ -2,9 +2,8 @@ package com.ltcode.capitalgainstaxcalculator.data_reader.data_writer;
 
 import com.ltcode.capitalgainstaxcalculator.calculator.LeftStockInfo;
 import com.ltcode.capitalgainstaxcalculator.calculator.StockGainsInfo;
-import com.ltcode.capitalgainstaxcalculator.country_info.CountryTaxCalculationInfo;
+import com.ltcode.capitalgainstaxcalculator.calculator.YearGainsInfo;
 import com.ltcode.capitalgainstaxcalculator.csv_creator.CsvCreator;
-import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyRateExchanger;
 import com.ltcode.capitalgainstaxcalculator.settings.Settings;
 import com.ltcode.capitalgainstaxcalculator.transaction.DividendTransaction;
 import com.ltcode.capitalgainstaxcalculator.transaction.Transaction;
@@ -16,11 +15,9 @@ import static com.ltcode.capitalgainstaxcalculator.settings.Settings.GENERATED_D
 import static com.ltcode.capitalgainstaxcalculator.settings.Settings.CSV_SEPARATOR;
 import java.io.IOException;
 import java.io.Writer;
-import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
-import java.time.Period;
 import java.util.*;
 
 
@@ -145,7 +142,6 @@ public class Write {
 
             // transactions
             for (JoinedTransaction jt : joinedTransactionList) {
-                String CSV = CsvCreator.get(jt, order, valuesConverter);
                 w.append(CsvCreator.get(jt, order, valuesConverter));
                 // check if joined transaction has not matching times
                 if (jt.isSellTimeInvalid()) {
@@ -203,9 +199,11 @@ public class Write {
             header.append(CSV_SEPARATOR)
                     .append("Exchange Rate")
                     .append(CSV_SEPARATOR)
-                    .append("Value")
+                    .append("Dividend Before Taxes")
                     .append(CSV_SEPARATOR)
-                    .append("Paid Tax")
+                    .append("Paid Taxes")
+                    .append(CSV_SEPARATOR)
+                    .append("Dividend After Taxes")
                     .append(CSV_SEPARATOR)
                     .append("Currency")
                     .append(CSV_SEPARATOR)
@@ -220,9 +218,11 @@ public class Write {
                         + CSV_SEPARATOR
                         + valuesConverter.getRateAfterShiftUpTo7DaysPrevious(t)
                         + CSV_SEPARATOR
-                        + valuesConverter.getValue(t)
+                        + (t.getDividendBeforeTaxes() == null ? null : valuesConverter.getDividendBeforeTaxes(t))
                         + CSV_SEPARATOR
-                        + valuesConverter.getPaidTaxes(t)
+                        + (t.getTaxesPaid() == null ? null : valuesConverter.getTaxesPaid(t))
+                        + CSV_SEPARATOR
+                        + (t.getDividendAfterTaxes() == null ? null : valuesConverter.getDividendAfterTaxes(t))
                         + CSV_SEPARATOR
                         + valuesConverter.getToCurrency()
                         + CSV_SEPARATOR
@@ -241,7 +241,6 @@ public class Write {
                 throw new RuntimeException(e);
             }
         }
-
     }
 
     public static void generateYearStockGainsMapCsvFile(Map<Integer, Map<String, StockGainsInfo>> yearStockGainsMap) {
@@ -293,20 +292,20 @@ public class Write {
         }
     }
 
-    public static void generateCalculationSummaryTxtFile(Map<Integer, StockGainsInfo> yearAllStocksGainsMap,
+    public static void generateCalculationSummaryTxtFile(Map<Integer, YearGainsInfo> yearAllStocksGainsMap,
                                                          List<LeftStockInfo> leftStocksList,
-                                                         String info) {
+                                                         String report) {
         generateCalculationSummaryTxtFile(
                 yearAllStocksGainsMap,
                 leftStocksList,
-                info,
+                report,
                 GENERATED_DATA_PATH.resolve(Settings.SUMMARY_FILE_NAME)
         );
     }
 
-    public static void generateCalculationSummaryTxtFile(Map<Integer, StockGainsInfo> yearAllStocksGainsMap,
+    public static void generateCalculationSummaryTxtFile(Map<Integer, YearGainsInfo> yearAllStocksGainsMap,
                                                          List<LeftStockInfo> leftStocksList,
-                                                         String info,
+                                                         String report,
                                                          Path path) {
         Writer w = null;
         try {
@@ -329,11 +328,13 @@ public class Write {
                         gainsInfo.getYear(),
                         formatter.format(gainsInfo.getTotalSellValue()),
                         formatter.format(gainsInfo.getTotalBuyValue()),
-                        formatter.format(gainsInfo.getTotalBuySellCommission()),
+                        formatter.format(gainsInfo.getTotalBuySellCommissionValue()),
                         formatter.format(gainsInfo.getTotalProfitValue()),
                         gainsInfo.getCurrency())
                 );
             }
+
+            // left stocks in portfolio
 
             w.append("\n\tSTOCKS IN PORTFOLIO\n\n");
             w.append(String.format("%15s %20s %15s \n",
@@ -349,9 +350,11 @@ public class Write {
                 );
             }
 
-            if (! info.isEmpty()) {
+            // write report
+
+            if (! report.isEmpty()) {
                 w.append("\n\tADDITIONAL INFO\n\n");
-                w.append(info);
+                w.append(report);
             }
         } catch (IOException e) {
             throw new RuntimeException(e);

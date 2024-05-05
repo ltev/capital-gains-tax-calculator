@@ -49,11 +49,12 @@ public abstract class Transaction {
         return currency;
     }
 
-    // OperationNotSupportedException - as default, using inheritance
+    // OperationNotSupportedException - as default, using inheritance to access data
 
     public BigDecimal getCommission() {
         throw new OperationNotSupportedException();
     }
+
     public String getProduct() {
         throw new OperationNotSupportedException();
     }
@@ -65,7 +66,15 @@ public abstract class Transaction {
         throw new OperationNotSupportedException();
     }
 
-    public BigDecimal getTaxPaid() {
+    public BigDecimal getDividendBeforeTaxes()   {
+        throw new OperationNotSupportedException();
+    }
+
+    public BigDecimal getTaxesPaid() {
+        throw new OperationNotSupportedException();
+    }
+
+    public BigDecimal getDividendAfterTaxes()   {
         throw new OperationNotSupportedException();
     }
 

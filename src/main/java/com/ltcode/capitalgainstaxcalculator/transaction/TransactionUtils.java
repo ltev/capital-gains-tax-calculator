@@ -1,6 +1,5 @@
 package com.ltcode.capitalgainstaxcalculator.transaction;
 
-import com.ltcode.capitalgainstaxcalculator.exception.CalculatorException;
 import com.ltcode.capitalgainstaxcalculator.exception.InvalidDateOrderException;
 import com.ltcode.capitalgainstaxcalculator.exception.OperationNotSupportedException;
 import com.ltcode.capitalgainstaxcalculator.utils.Utils;
@@ -8,8 +7,6 @@ import com.ltcode.capitalgainstaxcalculator.utils.Utils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
-
-import static com.ltcode.capitalgainstaxcalculator.transaction.TransactionData.*;
 
 public class TransactionUtils {
 
@@ -61,7 +58,9 @@ public class TransactionUtils {
             case PRICE_PER_SHARE -> t.getPricePerShare();
             case VALUE -> t.getValue();
             case CURRENCY -> t.getCurrency();
-            case TAX_PAID -> t.getTaxPaid();
+            case DIVIDEND_BEFORE_TAXES -> t.getDividendBeforeTaxes();
+            case TAXES_PAID -> t.getTaxesPaid();
+            case DIVIDEND_AFTER_TAXES -> t.getDividendAfterTaxes();
             case COMMISSION -> t.getCommission();
             default -> throw new OperationNotSupportedException("No valid data type.");
         };

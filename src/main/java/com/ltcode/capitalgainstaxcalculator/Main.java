@@ -43,6 +43,12 @@ public class Main {
                 Paths.get("D:\\workspace\\java\\CapitalGainsTaxCalculator\\data\\transactions", "account_degiro.csv")
         );
 
+        FileInfo revolutTransactions = new FileInfo(
+                Broker.REVOLUT,
+                FileType.ACCOUNT,
+                Paths.get("D:\\workspace\\java\\CapitalGainsTaxCalculator\\data\\transactions", "transactions_revolut.csv")
+        );
+
         // all transactions of one specific automatic degiro fund
         /*
         List<? extends Transaction> transactionList = TransactionReader.readTransactions(BROKER,
@@ -67,8 +73,14 @@ public class Main {
 
 
         CountryTaxCalculationInfo polandInfo = CountryTaxCalculationInfo.getInstance(Country.POLAND);
+
         GainsCalculator calculator = new GainsCalculatorImpl(polandInfo);
-        calculator.calculate(degiroTransactions, degiroAccount);
+
+        calculator.calculate(
+                degiroTransactions,
+                degiroAccount,
+                revolutTransactions
+        );
         calculator.generateTransactionsCsvFile(writeDirectory);
 
         /*

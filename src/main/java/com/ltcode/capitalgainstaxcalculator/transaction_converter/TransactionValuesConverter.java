@@ -40,8 +40,16 @@ public class TransactionValuesConverter {
         return calculate(transaction, transaction.getCommission());
     }
 
-    public BigDecimal getPaidTaxes(Transaction transaction) {
-        return calculate(transaction, transaction.getTaxPaid());
+    public BigDecimal getDividendBeforeTaxes(Transaction transaction) {
+        return calculate(transaction, transaction.getDividendBeforeTaxes());
+    }
+
+    public BigDecimal getDividendAfterTaxes(Transaction transaction) {
+        return calculate(transaction, transaction.getDividendAfterTaxes());
+    }
+
+    public BigDecimal getTaxesPaid(Transaction transaction) {
+        return calculate(transaction, transaction.getTaxesPaid());
     }
 
     public BigDecimal getValue(Transaction transaction) {

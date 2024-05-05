@@ -2,24 +2,17 @@ package com.ltcode.capitalgainstaxcalculator.transaction;
 
 public enum TransactionData {
 
-    DATE_TIME(true),
-    TICKER(true),   // or ISIN
-    PRODUCT(true),
-    TYPE(true),
-    QUANTITY(true),
-    PRICE_PER_SHARE(true),
-    VALUE(true),
-    CURRENCY(true),
+    DATE_TIME,
+    TICKER,
+    PRODUCT,
+    TYPE,
+    QUANTITY,
+    PRICE_PER_SHARE,
+    VALUE,
+    CURRENCY,
+    DIVIDEND_BEFORE_TAXES,
+    TAXES_PAID,
+    DIVIDEND_AFTER_TAXES,
+    COMMISSION;
 
-    SUM_OF_BUYS_VALUE(false),
-
-    PROFIT(false),
-
-    EXCHANGE_RATE(true),
-    TAX_PAID(true),
-    COMMISSION(true);
-
-    private boolean isSimpleTransactionData;
-    TransactionData(boolean simpleTransactionData) {
-    }
 }

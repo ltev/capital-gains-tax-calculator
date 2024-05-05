@@ -1,5 +1,6 @@
 package com.ltcode.capitalgainstaxcalculator.csv_creator;
 
+import com.ltcode.capitalgainstaxcalculator.exception.OperationNotSupportedException;
 import com.ltcode.capitalgainstaxcalculator.settings.Settings;
 import com.ltcode.capitalgainstaxcalculator.transaction.Transaction;
 import com.ltcode.capitalgainstaxcalculator.transaction.TransactionData;
@@ -14,12 +15,19 @@ public class CsvCreator {
         StringBuilder sb = new StringBuilder();
         for (TransactionData data : order) {
             sb.append(Settings.CSV_SEPARATOR);
+            Object output;
+            try {
+                output = TransactionUtils.get(transaction, data);
+            } catch (OperationNotSupportedException e) {
+                output = "";
+                // ignore
+            }
             if (data == TransactionData.PRODUCT) {              // ',' might be in product name
                 sb.append("\"");
-                sb.append(TransactionUtils.get(transaction, data));
+                sb.append(output);
                 sb.append("\"");
             } else {
-                sb.append(TransactionUtils.get(transaction, data));
+                sb.append(output);
             }
         }
         return sb.substring(1);

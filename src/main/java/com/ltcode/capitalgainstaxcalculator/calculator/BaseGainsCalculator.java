@@ -6,6 +6,7 @@ import com.ltcode.capitalgainstaxcalculator.transaction.Transaction;
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Makes calculations for one specific file
@@ -16,7 +17,9 @@ public interface BaseGainsCalculator {
 
     void calculate(List<? extends Transaction> transactions);
 
-    StockGainsInfo getTotalGains(int year);
+    Map<Integer, YearGainsInfo> getTotalGains();
+
+    YearGainsInfo getTotalGains(int year);
 
     StockGainsInfo getTotalGains(int year, String ticker);
 
