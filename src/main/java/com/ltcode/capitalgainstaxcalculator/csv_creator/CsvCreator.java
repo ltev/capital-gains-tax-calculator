@@ -96,6 +96,11 @@ public class CsvCreator {
                     .append(data);
         }
 
+        if (joinedTransaction.isSellTimeInvalid()) {
+            sb.append(SEPARATOR)
+                    .append("Invalid time");
+        }
+
         return sb.toString();
     }
 }

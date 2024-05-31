@@ -37,6 +37,10 @@ public class DividendTransaction extends Transaction {
         return ticker;
     }
 
+    public String getProduct() {
+        return product;
+    }
+
     public BigDecimal getTaxesPaid() {
         return taxesPaid;
     }
@@ -45,7 +49,7 @@ public class DividendTransaction extends Transaction {
         if (taxesPaid == null) {
             return null;
         }
-        return new BigDecimal("100").multiply(taxesPaid.divide(value, 4, RoundingMode.HALF_UP));
+        return new BigDecimal("100").multiply(taxesPaid.divide(dividendBeforeTaxes, 4, RoundingMode.HALF_UP));
     }
 
     public BigDecimal getDividendBeforeTaxes() {

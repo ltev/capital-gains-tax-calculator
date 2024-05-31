@@ -95,5 +95,4 @@ public class TransactionValuesConverter {
                     .multiply(getRateAfterShiftUpTo7DaysPrevious(transaction))
                     .setScale(countryInfo.getPrecision(), countryInfo.getRoundingMode());
     }
-
 }

@@ -34,19 +34,19 @@ public class Main {
         FileInfo degiroTransactions = new FileInfo(
                 Broker.DEGIRO,
                 FileType.TRANSACTIONS,
-                Paths.get("D:\\workspace\\java\\CapitalGainsTaxCalculator\\data\\transactions", "transactions_degiro.csv")
+                Paths.get("F:\\Podatki\\transactions", "transactions_degiro.csv")
         );
 
         FileInfo degiroAccount = new FileInfo(
                 Broker.DEGIRO,
                 FileType.ACCOUNT,
-                Paths.get("D:\\workspace\\java\\CapitalGainsTaxCalculator\\data\\transactions", "account_degiro.csv")
+                Paths.get("F:\\Podatki\\transactions", "account_degiro.csv")
         );
 
         FileInfo revolutTransactions = new FileInfo(
                 Broker.REVOLUT,
                 FileType.ACCOUNT,
-                Paths.get("D:\\workspace\\java\\CapitalGainsTaxCalculator\\data\\transactions", "transactions_revolut.csv")
+                Paths.get("F:\\Podatki\\transactions", "transactions_revolut.csv")
         );
 
         // all transactions of one specific automatic degiro fund
