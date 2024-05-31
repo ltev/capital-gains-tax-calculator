@@ -25,7 +25,7 @@ public class SellBuyJoiner {
      */
     private final List<Transaction> transactionList;
     private List<BuySellTransaction> sellTransactionList;
-    private List<SplitTransaction> splitTransactions;
+    private Map<String, List<SplitTransaction>> splitTransactionsMap;
     private List<Transaction> transactionsThatCouldNotBeSold;
 
     private int numberOfSplits;
@@ -48,7 +48,7 @@ public class SellBuyJoiner {
         StringBuilder infoBuilder = new StringBuilder();
         this.sellTransactionList = new ArrayList<>();
         this.buyTransactionMap = new HashMap<>();
-        this.splitTransactions = new ArrayList<>();
+        this.splitTransactionsMap = new HashMap<>();
         this.transactionsThatCouldNotBeSold = new ArrayList<>();
         fillTickerMapData();
 
@@ -61,13 +61,16 @@ public class SellBuyJoiner {
                 List<BuySellTransaction> buyList = buyTransactionMap.get(sellTransaction.getTicker());
                 List<BuySellTransaction> matchingBuyList = new ArrayList<>();
 
-                // SPLIT SHOULD USE MAP FOR TICKER -> SPLIT not splitTransactions.get(0) // the matching split might be later in the list
                 // CHECK FOR SPLIT
-                if (splitTransactions.size() > 0 && splitTransactions.get(0).getTicker().equals(sellTransaction.getTicker())) {
+                // in Revolut: (in Degiro no split exists - stock are sold and bought instead)
+                // split transaction nr 1 gives us the old quantity that we had before the split
+                // split transaction nr 2 give us the new quantity after split that we have now
+                List<SplitTransaction> splitTransactionList = splitTransactionsMap.get(sellTransaction.getTicker());
+                if (splitTransactionList != null && splitTransactionList.size() > 0 && splitTransactionList.get(0).getTicker().equals(sellTransaction.getTicker())) {
                     numberOfSplits++;
-                    updateAffectedSplitTransactions(splitTransactions.get(0), splitTransactions.get(1));
-                    splitTransactions.remove(0);
-                    splitTransactions.remove(0);
+                    updateAffectedSplitTransactions(splitTransactionList.get(0), splitTransactionList.get(1));
+                    splitTransactionList.remove(0);
+                    splitTransactionList.remove(0);
                 }
 
                 boolean isSellWithBuyMatching = true;
@@ -202,7 +205,8 @@ public class SellBuyJoiner {
                 BuySellTransaction sellTransaction = (BuySellTransaction) t;
                 sellTransactionList.add(sellTransaction);
             } else if (t.getType() == TransactionType.STOCK_SPLIT) {
-                splitTransactions.add((SplitTransaction) t);
+                splitTransactionsMap.putIfAbsent(t.getTicker(), new ArrayList<>());
+                splitTransactionsMap.get(t.getTicker()).add((SplitTransaction) t);
             }
         }
     }
@@ -220,7 +224,7 @@ public class SellBuyJoiner {
         }
         BigDecimal fromQuantity = oldData.getQuantity().negate();
         BigDecimal toQuantity = newData.getQuantity();
-        BigDecimal splitAmount = fromQuantity.divide(toQuantity);
+        BigDecimal splitAmount = toQuantity.divide(fromQuantity);
 
         var buyList = buyTransactionMap.get(newData.getTicker());
         for (int i = 0; i < buyList.size(); i++) {
@@ -228,11 +232,11 @@ public class SellBuyJoiner {
             if (Duration.between(buy.getDateTime(), oldData.getDateTime()).isNegative()) {
                 break;
             }
-            var newQuantity = buy.getQuantity().divide(splitAmount);
+            var newQuantity = buy.getQuantity().multiply(splitAmount);
             BuySellTransaction updated = new BuySellTransactionBuilder(buy)
                     .setQuantity(newQuantity)
                     .setOriginalQuantity(newQuantity)
-                    .setPricePerShare(buy.pricePerShare.multiply(splitAmount))
+                    .setPricePerShare(buy.pricePerShare.divide(splitAmount))
                     .build();
             buyList.set(i, updated);
         }

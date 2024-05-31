@@ -36,6 +36,10 @@ public class TransactionReader {
             DESCRIPTION,
             EXCHANGE_RATE,
             DIVIDEND,
+            PRICE_PER_SHARE,
+            QUANTITY,
+            VALUE,
+            COMMISSION,
             CURRENCY
 
         }
@@ -111,7 +115,6 @@ public class TransactionReader {
         abstract List<Transaction> readTransactionsFile(Path path);
 
     }
-
 
     /**
      * Split -> must be calculated and not sold transactions updated in the GainCalculator class
@@ -356,9 +359,24 @@ public class TransactionReader {
             }
         };
 
+        private final Map<FileData, Integer> TRANSACTIONS_INDEX_MAP = new HashMap<>() {
+            {
+                put(FileData.DATE, 0);
+                put(FileData.TIME, 1);
+                put(FileData.PRODUCT, 2);
+                put(FileData.ISIN, 3);
+                put(FileData.QUANTITY, 6);
+                put(FileData.PRICE_PER_SHARE, 7);
+                put(FileData.VALUE, 11);
+                put(FileData.EXCHANGE_RATE, 13);
+                put(FileData.COMMISSION, 14);
+                put(FileData.CURRENCY, 17);
+            }
+        };
+
         /**
          * Reads dividends from file "account"
-         * Looks for the key word 'dywidend' in description column
+         * Looks for the key word 'dywidend' in description column in file language
          */
         List<DividendTransaction> getDividendList(List<String> lines) {
             Language LANGUAGE;
@@ -420,7 +438,7 @@ public class TransactionReader {
                 // Invalid values can happen in Degiro
                 if ((isDividend && Utils.isNegative(data.dividendBeforeTaxes()))
                         || (isTaxPaid && Utils.isNegative(data.taxPaid()))) {
-                    System.out.println("Problem on line: " + i);
+                    System.out.println("Problem on line: " + (i + 1));
                     System.out.println("Invalid values!");
                     continue;
                 }
@@ -659,7 +677,7 @@ public class TransactionReader {
             return new Object[]{type, quantity, pricePerShare, currency};
         }
 
-        private static List<Transaction> readBuySellTransactions(Path path) {
+        private List<Transaction> readBuySellTransactions(Path path) {
             List<Transaction> transactionsList = new ArrayList<>();
             List<String> lines;
 
@@ -669,10 +687,7 @@ public class TransactionReader {
                 throw new RuntimeException(e);
             }
 
-            // object to index in a String[]
-            Map<String, Integer> indexMap = new HashMap<>();
-
-            for (int i = 0; i < lines.size(); i++) {
+            for (int i = 1; i < lines.size(); i++) {
                 String line = lines.get(i);
                 String[] arr = getSplit(line);
 
@@ -681,69 +696,26 @@ public class TransactionReader {
                     + " LINE: " + i);
                 }
 
-                // header, find indexes
-                if (i == 0) {
-                    for (int j = 0; j < arr.length; j++) {
-                        String columnName = arr[j];
-                        columnName = columnName.toLowerCase();
-                        switch (columnName) {
-                            case "datum" :
-                            case "data" :
-                                indexMap.put("date", j);
-                                break;
-                            case "uhrzeit" :
-                            case "czas":
-                                indexMap.put("time", j);
-                                break;
-                            case "isin" :
-                                indexMap.put("ticker", j);
-                                break;
-                            case "produkt":
-                                indexMap.put("product", j);
-                                break;
-                            case "wert" :
-                            case "wartość" :
-                                indexMap.put("valueWithoutCommission", j);
-                                break;
-                            case "anzahl" :
-                            case "liczba" :
-                                indexMap.put("quantity", j);
-                                break;
-                            case "kurs":
-                                indexMap.put("pricePerShare", j);
-                                break;
-                            case "opłata transakcyjna":
-                            case "transaktionsgebühren":
-                                indexMap.put("commission", j);
-                                break;
-                            case "kurs wymian": // exchange curse from local currency to euro
-                            case "wechselkurs":
-                                indexMap.put("exchangeRate", j);        // can be empty
-                                break;
-                        }
-                    }
-                    // price per share is only given in local currency
-                    // type depends if the quantity is negative or positive
-                    indexMap.put("currency", 17);
-                    continue;
-                }
+                // price per share is only given in local currency
+                // type depends if the quantity is negative or positive
+
 
                 // is given in local currency not in euro, but the whole value is always in euro
-                // that's why we change it to euro
-                BigDecimal pricePerShare = new BigDecimal(arr[indexMap.get("pricePerShare")]);
-                if (! arr[indexMap.get("exchangeRate")].isEmpty()) {
-                    BigDecimal exchangeRate = new BigDecimal(arr[indexMap.get("exchangeRate")]);
+                // that's why we change the price per share to euro here
+                BigDecimal pricePerShare = new BigDecimal(arr[TRANSACTIONS_INDEX_MAP.get(FileData.PRICE_PER_SHARE)]);
+                if (! arr[TRANSACTIONS_INDEX_MAP.get(FileData.EXCHANGE_RATE)].isEmpty()) {
+                    BigDecimal exchangeRate = new BigDecimal(arr[TRANSACTIONS_INDEX_MAP.get(FileData.EXCHANGE_RATE)]);
                     pricePerShare = pricePerShare.divide(exchangeRate, 2, RoundingMode.HALF_UP);
                 }
 
                 // System.out.println(line);
 
-                BigDecimal quantity = new BigDecimal(arr[indexMap.get("quantity")]);
-                // total value with commission
-                BigDecimal valueWithoutCommission = new BigDecimal(arr[indexMap.get("valueWithoutCommission")]);
-                BigDecimal commission = arr[indexMap.get("commission")].isEmpty()
+                BigDecimal quantity = new BigDecimal(arr[TRANSACTIONS_INDEX_MAP.get(FileData.QUANTITY)]);
+                // total value without commission (price per share * quantity)
+                BigDecimal valueWithoutCommission = new BigDecimal(arr[TRANSACTIONS_INDEX_MAP.get(FileData.VALUE)]);
+                BigDecimal commission = arr[TRANSACTIONS_INDEX_MAP.get(FileData.COMMISSION)].isEmpty()
                         ? BigDecimal.ZERO
-                        : new BigDecimal(arr[indexMap.get("commission")]);
+                        : new BigDecimal(arr[TRANSACTIONS_INDEX_MAP.get(FileData.COMMISSION)]);
                 TransactionType type;
 
 
@@ -767,17 +739,17 @@ public class TransactionReader {
                 TransactionData lineData = new TransactionData(
                         i + 1,
                         LocalDateTime.of(
-                                LocalDate.parse(arr[indexMap.get("date")], DateTimeFormatter.ofPattern("dd-MM-yyyy")),
-                                LocalTime.parse(arr[indexMap.get("time")])
+                                LocalDate.parse(arr[TRANSACTIONS_INDEX_MAP.get(FileData.DATE)], DateTimeFormatter.ofPattern("dd-MM-yyyy")),
+                                LocalTime.parse(arr[TRANSACTIONS_INDEX_MAP.get(FileData.TIME)])
                         ),
-                        arr[indexMap.get("ticker")],
-                        arr[indexMap.get("product")],
+                        arr[TRANSACTIONS_INDEX_MAP.get(FileData.ISIN)],
+                        arr[TRANSACTIONS_INDEX_MAP.get(FileData.PRODUCT)],
                         type,
                         quantity,
                         pricePerShare,
                         valueWithoutCommission,
                         commission,
-                        Currency.valueOf(arr[indexMap.get("currency")]));
+                        Currency.valueOf(arr[TRANSACTIONS_INDEX_MAP.get(FileData.CURRENCY)]));
 
                 Transaction t = TransactionBuilder.build(lineData);
                 transactionsList.add(t);
