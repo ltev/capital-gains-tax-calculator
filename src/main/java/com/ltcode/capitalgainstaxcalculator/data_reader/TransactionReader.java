@@ -10,6 +10,7 @@ import com.ltcode.capitalgainstaxcalculator.transaction.type.TransactionType;
 import com.ltcode.capitalgainstaxcalculator.utils.Utils;
 
 import java.io.IOException;
+import java.lang.invoke.VarHandle;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.file.Files;
@@ -41,7 +42,6 @@ public class TransactionReader {
             VALUE,
             COMMISSION,
             CURRENCY
-
         }
 
         enum Language {
@@ -114,6 +114,10 @@ public class TransactionReader {
          */
         abstract List<Transaction> readTransactionsFile(Path path);
 
+        /**
+         * File provides information about buy sell crypto transactions
+         */
+        abstract List<Transaction> readCryptoTransactionsFile(Path path);
     }
 
     /**
@@ -121,6 +125,9 @@ public class TransactionReader {
      */
     private static class RevolutTransactionReader extends BrokerReader {
 
+        /**
+         * Reads all buy / sell stock transactions from accout file
+         */
         @Override
         List<Transaction> readAccountFile(Path path) {
             return read(path);
@@ -133,6 +140,131 @@ public class TransactionReader {
         List<Transaction> readTransactionsFile(Path path) {
             throw new RuntimeException("Not in use.");
         }
+
+        @Override
+        List<Transaction> readCryptoTransactionsFile(Path path) {
+            List<Transaction> transactionsList = new ArrayList<>();
+            List<String> lines;
+
+            try {
+                lines = Files.readAllLines(path);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            for (int i = 0; i < lines.size(); i++) {
+                // System.out.println("\tReading line: " + (i + 1));
+
+                // update line
+                // revolut is putting values bigger than "$1,000" in "" and is using commas
+                // update it getting rid of the commas and ""
+                String updatedLine = editLine2(lines.get(i));
+                String[] arr = updatedLine.split(",");
+                if (arr.length != 7) {
+                    throw new TransactionInfoException("Array length after splitting line should be always 7 but is: " + arr.length);
+                }
+
+                final String TRANSACTION_TYPE = arr[1];
+
+                if (TRANSACTION_TYPE.equals("Type")) {          // first line -> header
+                    continue;
+                }
+
+                // create transaction type
+                TransactionType type = switch (TRANSACTION_TYPE) {
+                    case "Kaufen" -> TransactionType.BUY;
+                    case "Verkaufen" -> TransactionType.SELL;
+                    case "Senden", "Erhalten" -> null;
+                    case "Staking-Prämie" -> TransactionType.DIVIDEND;
+                    default -> throw new RevolutReaderException("No Type of type: " + arr[2]);
+                };
+
+                if (type == null) {                             // skip when not buy or sell type
+                    continue;
+                }
+
+                Transaction t;
+
+                System.out.println(lines.get(i));
+                System.out.println(updatedLine);
+
+                int lineNumber = i + 1;
+                /**
+                 * DateTime in edited line format: 27102020. 22:21:18
+                 */
+                LocalDateTime dateTime = LocalDateTime.of(
+                        LocalDate.parse(arr[6].substring(0, 8), DateTimeFormatter.ofPattern("ddMMyyyy")),
+                        LocalTime.parse(arr[6].substring(10))
+                );
+                String ticker = arr[0];
+                BigDecimal quantity = new BigDecimal(getNumberFromCurrency(arr[2]));
+
+                BigDecimal pricePerShare;
+                BigDecimal value;
+                BigDecimal commission;
+                Currency currency;
+
+                if (type == TransactionType.DIVIDEND) {
+                    pricePerShare = BigDecimal.ZERO;
+                    value = BigDecimal.ZERO;
+                    commission = BigDecimal.ZERO;
+                    currency = Currency.USD;            // currency not important for stock dividend
+
+                    // change type from DIVIDEND -> TO BUY
+                    // calculating buy / sell profit for dividend stocks is not supported
+                    type = TransactionType.BUY;
+                } else {
+                    pricePerShare = new BigDecimal(getNumberFromCurrency(arr[3]));
+                    value = new BigDecimal(getNumberFromCurrency(arr[4]));
+                    commission = new BigDecimal(getNumberFromCurrency(arr[5]));
+                    currency = getCurrency(arr[3]);
+
+                    // check currency for all values
+                    if (currency != getCurrency(arr[4]) || currency != getCurrency(arr[5])) {
+                        throw new TransactionInfoException("Currency must be the same for all records.");
+                    }
+
+                    // check data correctness
+                    // price per share has only 2 decimal places but the real buy/sell price per share could
+                    // have been more precise - (total value / quantity)
+
+                    BigDecimal expectedValue = quantity.multiply(pricePerShare);
+                    double differenceInPercent = expectedValue.subtract(value).abs()
+                            .multiply(new BigDecimal("100"))
+                            .divide(value, 4, RoundingMode.HALF_UP)
+                            .doubleValue();
+                    int intValue = value.intValue();
+                    // if statement can be adjusted in the future
+                    if ((intValue < 500 && differenceInPercent > 0.6) || (intValue >= 500 && differenceInPercent > 0.25)) {
+                        throw new TransactionInfoException(String.format("Incorrect value for line: %s. " +
+                                        "Price per share: %s. Expected value: %s but read: %s. Difference in percent: %f",
+                                lineNumber, pricePerShare, expectedValue, value, differenceInPercent));
+                    }
+                    // pricePerShare = value.divide(quantity, 4, RoundingMode.HALF_UP);
+                    // pricePerShare is only an information  value
+                    // when calculating only value and quantity is used
+                }
+
+                TransactionData lineData = new TransactionData(
+                        lineNumber,
+                        dateTime,
+                        ticker,
+                        ticker,
+                        type,
+                        quantity,
+                        pricePerShare,
+                        value,
+                        commission,
+                        currency
+                );
+                t = TransactionBuilder.build(lineData);
+
+                transactionsList.add(t);
+            }
+
+            return transactionsList;
+        }
+
 
         private static class Split {
             String ticker;
@@ -147,6 +279,7 @@ public class TransactionReader {
          */
         private static List<Transaction> read(Path path) {
             List<Transaction> transactionsList = new ArrayList<>();
+            List<TransactionData> tempSplitsList = new ArrayList<>(2);
             List<String> lines;
 
             try {
@@ -215,29 +348,134 @@ public class TransactionReader {
                             arr[4].length() == 0 ? null : new BigDecimal(getNumberFromCurrency(arr[4])),
                             arr[5].length() == 0 ? null : new BigDecimal(getNumberFromCurrency(arr[5])),
                             BigDecimal.ZERO,
-                            Currency.valueOf(arr[6]));
-
+                            Currency.valueOf(arr[6])
+                    );
+                    if (type == TransactionType.STOCK_SPLIT) {
+                        tempSplitsList.add(lineData);
+                        if (tempSplitsList.size() == 1) {
+                            // nothing to add to transactionsList
+                            continue;
+                        } else if (tempSplitsList.size() == 2) {
+                            // get split Value, update lineDate to use for transaction and and clear list
+                            BigDecimal splitValue = getSplitValue(tempSplitsList.get(0), tempSplitsList.get(1));
+                            lineData = TransactionData.copyWithNewValue(lineData, splitValue);
+                            tempSplitsList.clear();
+                        } else {
+                            throw new TransactionInfoException("List size can not be greater than 2");
+                        }
+                    }
                     t = TransactionBuilder.build(lineData);
                 }
+
                 transactionsList.add(t);
             }
 
             return transactionsList;
         }
 
+        /**
+         *
+         * @return 10 when for each one stock after split user will get 10 stocks
+         */
+        private static BigDecimal getSplitValue(TransactionData t1, TransactionData t2) {
+            if (! t1.dateTime().toLocalDate().equals(t2.dateTime().toLocalDate())
+                || !Objects.equals(t1.ticker(), t1.ticker())
+                || !Objects.equals(t1.product(), t2.product())
+                || t1.type() != TransactionType.STOCK_SPLIT
+                || t2.type() != TransactionType.STOCK_SPLIT
+                || t1.currency() != t2.currency()) {
+                    throw new TransactionInfoException("Splits are not correct!");
+            }
+            BigDecimal oldValue = Utils.isNegative(t1.quantity()) ? t1.quantity() : t2.quantity();
+            BigDecimal newValue = Utils.isPositive(t1.quantity()) ? t1.quantity() : t2.quantity();
+            if (Utils.isPositive(oldValue) || Utils.isNegative(newValue)) {
+                throw new TransactionInfoException("Old quantity must be negative and new quantity must be positive.");
+            }
+            oldValue = oldValue.abs();
+            BigDecimal splitValue = newValue.divide(oldValue);
+            return splitValue;
+        }
+
+        /**
+         * Use only for formats when ',' is used as a 1000s separator not when it is used as decimal separator
+         * Get rid of all other signs then '-', '.' and digits
+         * input: $10,000.00 -> output: 10000.00
+         */
         private static String getNumberFromCurrency(String currency) {
+            return getNumberFromCurrency(currency, '.');
+        }
+
+        /**
+         *
+         * @param currency - string to format
+         * @param decimalSeparator - representation of decimal separator in formatted string
+         * @return pure number with '.' as a decimal separator
+         */
+        private static String getNumberFromCurrency(String currency, char decimalSeparator) {
             StringBuilder sb = new StringBuilder(currency.length());
+            char RETURN_DECIMAL_SEPARATOR = '.';
             for (char ch : currency.toCharArray()) {
-                if (ch == '-' || ch == '.' || Character.isDigit(ch)) {
+                if (ch == decimalSeparator) {
+                    sb.append(RETURN_DECIMAL_SEPARATOR);
+                }
+                else if (ch == '-' || Character.isDigit(ch)) {
                     sb.append(ch);
                 }
             }
             return sb.toString();
         }
 
+        private static Currency getCurrency(String str) {
+            StringBuilder sb = new StringBuilder();
+            String lastChar = str.substring(str.length() - 1);
+            if (lastChar.equals("€")) {
+                return Currency.EUR;
+            } else if (lastChar.equals("$")) {
+                return Currency.USD;
+            }
+            return Currency.valueOf(str.substring(str.length() - 3));
+        }
+
         /**
          * Gets rid of "" and ',' in columns with values    -> 23-02-2023,00:00,ABC,"-1,234.00",
          */
+        private static String editLine2(String s) {
+            List<Integer> quotationMarksIdx = new ArrayList<>();
+
+            // remove all '.', otherwise problem with quantity when it's not in quotes
+            s = s.replace(".", "");
+
+            for (int i = 0; i < s.length(); i++) {
+                char ch = s.charAt(i);
+                if (ch == '"') {
+                    quotationMarksIdx.add(i);
+                }
+            }
+            if (quotationMarksIdx.size() == 0) {
+                return s;
+            }
+            if ((quotationMarksIdx.size() & 1) == 1) {
+                throw new TransactionInfoException("Number of quotations marks must be even. Found: " + quotationMarksIdx.size());
+            }
+
+            StringBuilder sb = new StringBuilder(s.length());
+            sb.append(s, 0, quotationMarksIdx.get(0));
+            for (int i = 0; i < quotationMarksIdx.size(); i += 2) {
+                int startIdx = quotationMarksIdx.get(i);
+                int endIdx = quotationMarksIdx.get(i + 1);
+
+                String substring = s.substring(startIdx + 1, endIdx);
+                String update = substring.replace(',', '.');
+
+                sb.append(update);
+                int nextStartIdx = i + 2 < quotationMarksIdx.size()
+                        ? quotationMarksIdx.get(i + 2)
+                        : s.length();
+                sb.append(s, endIdx + 1, nextStartIdx);
+            }
+            return sb.toString();
+        }
+
         private static String editLine(String s) {
             List<Integer> quotationMarksIdx = new ArrayList<>();
             for (int i = 0; i < s.length(); i++) {
@@ -344,6 +582,11 @@ public class TransactionReader {
             return readBuySellTransactions(path);
         }
 
+        @Override
+        List<Transaction> readCryptoTransactionsFile(Path path) {
+            throw new RuntimeException("Not in use.");
+        }
+
         /**
          * Columns indexes of Degiro Account File
          */
@@ -435,17 +678,24 @@ public class TransactionReader {
                         currency
                 );
 
-                // Invalid values can happen in Degiro
-                if ((isDividend && Utils.isNegative(data.dividendBeforeTaxes()))
-                        || (isTaxPaid && Utils.isNegative(data.taxPaid()))) {
-                    System.out.println("Problem on line: " + (i + 1));
-                    System.out.println("Invalid values!");
-                    continue;
-                }
+                // In Degiro in dividend is negative then it means there was a mistake and the previous dividend
+                // with the same value on the same day should be removed
 
                 if (isDividend) {
+                    if (Utils.isNegative(data.dividendBeforeTaxes())) {
+                        System.out.println("Dividend to remove on line: " + (i + 1));
+                        data = DividendData.update(data, data.dividendBeforeTaxes().negate(), null, null);
+                        removeMatchingDividendData(dividendDataList, data);
+                        continue;
+                    }
                     dividendDataList.add(data);
                 } else {
+                    if (Utils.isNegative(data.taxPaid())) {
+                        System.out.println("Dividend tax to remove on line: " + (i + 1));
+                        data = DividendData.update(data, null, data.taxPaid().negate(), null);
+                        removeMatchingDividendData(taxPaidDataList, data);
+                        continue;
+                    }
                     taxPaidDataList.add(data);
                 }
             }
@@ -471,6 +721,23 @@ public class TransactionReader {
             }
 
             return dividendList;
+        }
+
+        private void removeMatchingDividendData(List<DividendData> dividendDataList, DividendData dataToRemove) {
+            // iterate from end of list
+            for (int i = dividendDataList.size() - 1; i >= 0; i--) {
+                DividendData data = dividendDataList.get(i);
+                if (data.ticker().equals(dataToRemove.ticker())
+                    && data.dateTime().toLocalDate().equals(dataToRemove.dateTime().toLocalDate())
+                    && (
+                        (data.dividendBeforeTaxes() != null && data.dividendBeforeTaxes().equals(dataToRemove.dividendBeforeTaxes()))
+                         || (data.taxPaid() != null && data.taxPaid().equals(dataToRemove.taxPaid()))
+                        )) {
+                    dividendDataList.remove(i);
+                    return; // remove only first found
+                }
+            }
+            throw new RuntimeException("No data found!");
         }
 
         /**
@@ -812,6 +1079,11 @@ public class TransactionReader {
     public static List<Transaction> readTransactionsFile(Broker broker, Path path) {
         BrokerReader reader = getBrokerReader(broker);
         return reader.readTransactionsFile(path);
+    }
+
+    public static List<Transaction> readCryptoTransactionsFile(Broker broker, Path path) {
+        BrokerReader reader = getBrokerReader(broker);
+        return reader.readCryptoTransactionsFile(path);
     }
 
     // == PRIVATE HELPER METHODS ==
