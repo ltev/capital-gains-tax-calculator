@@ -5,6 +5,7 @@ import com.ltcode.capitalgainstaxcalculator.country_info.CountryTaxCalculationIn
 import com.ltcode.capitalgainstaxcalculator.data_reader.data_writer.Write;
 
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,17 +16,19 @@ import java.util.Map;
 public class GainsCalculatorImpl implements GainsCalculator {
 
     private final CountryTaxCalculationInfo countryInfo;
+    private final LocalDate lastCalculationDate;
     private BaseGainsCalculator[] baseCalculators;
 
-    public GainsCalculatorImpl(CountryTaxCalculationInfo countryInfo) {
+    public GainsCalculatorImpl(CountryTaxCalculationInfo countryInfo, LocalDate lastCalculationDate) {
         this.countryInfo = countryInfo;
+        this.lastCalculationDate = lastCalculationDate;
     }
 
     @Override
     public void calculate(FileInfo... fileInfoArr) {
         this.baseCalculators = new BaseGainsCalculator[fileInfoArr.length];
         for (int i = 0; i < baseCalculators.length; i++) {
-            baseCalculators[i] = new BaseGainsCalculatorImpl(countryInfo);
+            baseCalculators[i] = new BaseGainsCalculatorImpl(countryInfo, lastCalculationDate);
             baseCalculators[i].calculate(fileInfoArr[i]);
         }
     }
@@ -60,6 +63,6 @@ public class GainsCalculatorImpl implements GainsCalculator {
                 totalYearGains.addToTotalSellCommission(brokerYearGains.getTotalSellCommissionValue());
             }
         }
-        return  totalGainsMap;
+        return totalGainsMap;
     }
 }

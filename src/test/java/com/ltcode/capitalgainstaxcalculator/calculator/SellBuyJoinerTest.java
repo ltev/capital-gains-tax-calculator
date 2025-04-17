@@ -1,16 +1,17 @@
 package com.ltcode.capitalgainstaxcalculator.calculator;
 
 import com.ltcode.capitalgainstaxcalculator.TestSettings;
-import com.ltcode.capitalgainstaxcalculator.transaction.BuySellTransaction;
 import com.ltcode.capitalgainstaxcalculator.transaction.Transaction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class SellBuyJoinerTest {
 
@@ -19,7 +20,7 @@ class SellBuyJoinerTest {
     @BeforeEach
     void setUp() {
         List<? extends Transaction> transactionList = TestSettings.getTransactionList(TestSettings.SOURCE.HERE);
-        joiner = new SellBuyJoiner(transactionList, 2, RoundingMode.HALF_UP);
+        joiner = new SellBuyJoiner(transactionList, LocalDate.now(), 2, RoundingMode.HALF_UP);
         joiner.join();
     }
 
@@ -56,7 +57,7 @@ class SellBuyJoinerTest {
     void getTickersLeft() {
         var list = joiner.join();
 
-        assertArrayEquals(new String[] {"B", "C"}, joiner.getTickersLeft());
+        assertArrayEquals(new String[]{"B", "C"}, joiner.getTickersLeft());
     }
 
     @Test

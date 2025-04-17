@@ -9,6 +9,7 @@ import com.ltcode.capitalgainstaxcalculator.transaction.type.TransactionType;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.*;
 
 public class SellBuyJoiner {
@@ -17,6 +18,7 @@ public class SellBuyJoiner {
      * Report with all problems
      */
     private String REPORT;
+    private final LocalDate lastCalculationDate;
     private final int PRECISION;
     private final RoundingMode ROUNDING_MODE;
     /**
@@ -35,21 +37,26 @@ public class SellBuyJoiner {
     private Map<String, List<BuySellTransaction>> buyTransactionMap;
 
     public SellBuyJoiner(List<? extends Transaction> transactionsList,
+                         LocalDate lastCalculationDate,
                          int precision,
                          RoundingMode roundingMode) {
         this.transactionList = new ArrayList<>(transactionsList);
+        this.lastCalculationDate = lastCalculationDate;
         this.PRECISION = precision;
         this.ROUNDING_MODE = roundingMode;
         TransactionUtils.checkTransactionsValidity(this.transactionList);
     }
 
+    /**
+     * Join buy / sell transactions up to lastCalculationDate
+     */
     public List<JoinedTransaction> join() {
         StringBuilder reportBuilder = new StringBuilder();
         this.sellTransactionList = new ArrayList<>();
         this.buyTransactionMap = new HashMap<>();
         this.splitTransactionsMap = new HashMap<>();
         this.transactionsThatCouldNotBeSold = new ArrayList<>();
-        fillTickerMapData();
+        fillTickerBuyMapDataAndSellList();
 
         List<JoinedTransaction> result = new ArrayList<>(sellTransactionList.size());
 
@@ -60,12 +67,23 @@ public class SellBuyJoiner {
                 List<BuySellTransaction> buyList = buyTransactionMap.get(sellTransaction.getTicker());
                 List<BuySellTransaction> matchingBuyList = new ArrayList<>();
 
+                /*
+                Calculate only up to lastCalculationDate
+                 */
+                if (sellTransaction.getDateTime().toLocalDate().isAfter(lastCalculationDate)) {
+                    break;
+                }
+
                 // CHECK FOR SPLIT
                 // in Revolut: (in Degiro no split exists - stock are sold and bought instead)
                 List<SplitTransaction> splitTransactionList = splitTransactionsMap.get(sellTransaction.getTicker());
-                if (splitTransactionList != null && splitTransactionList.size() > 0) {
+                SplitTransaction splitTransaction = splitTransactionList == null || splitTransactionList.isEmpty()
+                        ? null
+                        : splitTransactionList.get(0);
+
+                if (splitTransaction != null && splitTransaction.getDateTime().isBefore(sellTransaction.getDateTime())) {
                     numberOfSplits++;
-                    updateAffectedSplitTransactions(splitTransactionList.get(0));
+                    updateAffectedSplitTransactions(splitTransaction);
                     splitTransactionList.remove(0);
                 }
 
@@ -188,11 +206,20 @@ public class SellBuyJoiner {
     }
 
     /**
-     * Transaction bought but still not sold
+     * Transaction bought but still not sold for specific stock
      */
     public List<BuySellTransaction> getLeftTransaction(String ticker) {
         var list = buyTransactionMap.get(ticker);
         return list == null ? new ArrayList<>() : list;
+    }
+
+    /**
+     * Transaction bought but still not sold for all stocks
+     */
+    public List<BuySellTransaction> getLeftTransaction() {
+        return buyTransactionMap.values().stream()
+                .flatMap(List::stream)
+                .toList();
     }
 
     public int getNumberOfSplits() {
@@ -201,7 +228,7 @@ public class SellBuyJoiner {
 
     // == PRIVATE HELPER METHODS ==
 
-    private void fillTickerMapData() {
+    private void fillTickerBuyMapDataAndSellList() {
         for (Transaction t : transactionList) {
             if (t.getType() == TransactionType.BUY) {
                 BuySellTransaction buyTransaction = (BuySellTransaction) t;

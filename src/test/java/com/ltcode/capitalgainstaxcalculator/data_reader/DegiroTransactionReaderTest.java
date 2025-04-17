@@ -6,7 +6,7 @@ import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyRateExchan
 import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyRateExchangerImp;
 import com.ltcode.capitalgainstaxcalculator.settings.Settings;
 import com.ltcode.capitalgainstaxcalculator.transaction.Currency;
-import com.ltcode.capitalgainstaxcalculator.transaction.DividendTransaction;
+import com.ltcode.capitalgainstaxcalculator.transaction.Transaction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -15,12 +15,12 @@ import java.util.List;
 
 class DegiroTransactionReaderTest {
 
-    List<DividendTransaction> list;
+    List<Transaction> list;
     CurrencyRateExchanger exchanger;
 
     @BeforeEach
     void setUp() {
-        this.list = TransactionReader.readDividendList(Broker.DEGIRO, TestSettings.DEGIRO_ACOUNT_DIVIDEND_2021_TEST_PATH);
+        this.list = TransactionReader.readAccountFile(Broker.DEGIRO, TestSettings.DEGIRO_ACOUNT_DIVIDEND_2021_TEST_PATH);
         this.exchanger = new CurrencyRateExchangerImp(
                 Currency.PLN,
                 Settings.EXCHANGE_RATES_DATA_PATH);

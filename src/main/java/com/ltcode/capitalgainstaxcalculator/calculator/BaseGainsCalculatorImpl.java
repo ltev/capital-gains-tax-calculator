@@ -18,11 +18,13 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.*;
 
 public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
 
     private final CountryTaxCalculationInfo countryInfo;
+    private final LocalDate lastCalculationDate;
     private FileInfo fileInfo;
     private final TransactionValuesConverter valuesConverter;
     private List<? extends Transaction> transactions;
@@ -42,10 +44,11 @@ public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
     private Map<Integer, DividendGainsInfo> yearDividendGainsMap;
     private final Currency toCurrency;
 
-    public BaseGainsCalculatorImpl(CountryTaxCalculationInfo countryInfo) {
+    public BaseGainsCalculatorImpl(CountryTaxCalculationInfo countryInfo, LocalDate lastCalculationDate) {
         this.countryInfo = countryInfo;
+        this.lastCalculationDate = lastCalculationDate;
         this.valuesConverter = new TransactionValuesConverter(countryInfo);
-        this.exchanger = new CurrencyRateExchangerImp(this.countryInfo.getCurrency(), Settings.EXCHANGE_RATES_DATA_PATH);;
+        this.exchanger = new CurrencyRateExchangerImp(this.countryInfo.getCurrency(), Settings.EXCHANGE_RATES_DATA_PATH);
         this.toCurrency = exchanger.getToCurrency();
     }
 
@@ -83,7 +86,7 @@ public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
         }
         TransactionUtils.checkTransactionsValidity(transactions);
 
-        this.joiner = new SellBuyJoiner(this.transactions, countryInfo.getPrecision(), countryInfo.getRoundingMode());
+        this.joiner = new SellBuyJoiner(this.transactions, lastCalculationDate, countryInfo.getPrecision(), countryInfo.getRoundingMode());
         this.joinedTransactionList = joiner.join();
         this.dividendTransactionsList = new ArrayList<>();
         this.yearStockGainsMap = new LinkedHashMap<>();

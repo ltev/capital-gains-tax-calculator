@@ -10,6 +10,7 @@ import com.ltcode.capitalgainstaxcalculator.country_info.CountryTaxCalculationIn
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 
 public class Main {
 
@@ -40,12 +41,13 @@ public class Main {
          * STOCK CALCULATION
          */
         CountryTaxCalculationInfo countryInfo = CountryTaxCalculationInfo.getInstance(Country.POLAND);
+        LocalDate lastCalculationDate = LocalDate.of(2021, 06, 31);
 
-        GainsCalculator calculator = new GainsCalculatorImpl(countryInfo);
+        GainsCalculator calculator = new GainsCalculatorImpl(countryInfo, lastCalculationDate);
         calculator.calculate(
-                degiroTransactions,
-                degiroAccount
-//                revolutTransactions
+//                degiroTransactions,
+//                degiroAccount
+                revolutTransactions
         );
 
         calculator.generateTransactionsCsvFile(writeDirectory

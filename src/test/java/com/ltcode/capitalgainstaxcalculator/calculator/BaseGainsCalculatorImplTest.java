@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.Period;
 
 import static com.ltcode.capitalgainstaxcalculator.transaction.Currency.USD;
@@ -20,7 +21,8 @@ BaseGainsCalculatorImplTest {
     @BeforeEach
     void setUp() {
         calculator = new BaseGainsCalculatorImpl(
-                new CountryTaxCalculationInfo(null, USD, 2, RoundingMode.HALF_UP, Period.ofDays(0))
+                new CountryTaxCalculationInfo(null, USD, 2, RoundingMode.HALF_UP, Period.ofDays(0)),
+                LocalDate.now()
         );
         calculator.calculate(TestSettings.getTransactionList(TestSettings.SOURCE.HERE));
     }
