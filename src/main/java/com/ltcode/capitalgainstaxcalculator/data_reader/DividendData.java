@@ -5,6 +5,7 @@ import com.ltcode.capitalgainstaxcalculator.transaction.type.TransactionType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 public record DividendData(int lineNumber,
                            LocalDateTime dateTime,
@@ -28,5 +29,7 @@ public record DividendData(int lineNumber,
                 dividendAfterTaxes,
                 data.currency
         );
+
+
     }
 }

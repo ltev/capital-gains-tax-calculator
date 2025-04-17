@@ -19,6 +19,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.function.Function;
+import java.util.function.IntFunction;
+import java.util.function.ToIntFunction;
 
 
 public class Write {
@@ -143,11 +146,6 @@ public class Write {
             // transactions
             for (JoinedTransaction jt : joinedTransactionList) {
                 w.append(CsvCreator.get(jt, order, valuesConverter));
-                // check if joined transaction has not matching times
-                if (jt.isSellTimeInvalid()) {
-                    w.append(CSV_SEPARATOR)
-                            .append("Sell time INVALID");
-                }
                 w.append('\n');
             }
         } catch (IOException e) {
@@ -322,9 +320,15 @@ public class Write {
                     "CURRENCY"
                     )
             );
-            for (int year : yearAllStocksGainsMap.keySet()) {
+
+            int[] sortedYears = yearAllStocksGainsMap.keySet().stream()
+                    .mapToInt(x -> x)
+                    .sorted()
+                    .toArray();
+
+            for (int year : sortedYears) {
                 var gainsInfo = yearAllStocksGainsMap.get(year);
-                w.append(String.format("%7s %15s %15s %15s %15s %15s\n",
+                w.append(String.format("%7s %15s %15s %15s %15s %15s%n",
                         gainsInfo.getYear(),
                         formatter.format(gainsInfo.getTotalSellValue()),
                         formatter.format(gainsInfo.getTotalBuyValue()),
@@ -365,7 +369,5 @@ public class Write {
                 throw new RuntimeException(e);
             }
         }
-
-
     }
 }

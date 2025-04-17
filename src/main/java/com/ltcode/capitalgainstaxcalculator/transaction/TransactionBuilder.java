@@ -13,8 +13,8 @@ public class TransactionBuilder {
                     new BuySellTransaction(data.type(), data.dateTime(), data.ticker(), data.product(), data.quantity(),
                     data.pricePerShare(), data.value(), data.commission(), data.currency());
             case STOCK_SPLIT ->
-                    new SplitTransaction(data.dateTime(), data.ticker(), data.quantity(), data.value(), data.currency());
-            case CASH_TOP_UP, CASH_WITHDRAWAL, CUSTODY_FEE, TRANSFER_TO_DIFF_LOCATION ->
+                    new SplitTransaction(data.dateTime(), data.ticker(), data.value(), data.currency());
+            case CASH_TOP_UP, CASH_WITHDRAWAL, CUSTODY_FEE, CUSTODY_FEE_REVERSAL, TRANSFER_TO_DIFF_LOCATION ->
                     new DifferentTransaction(data.dateTime(), data.type(), data.value(), data.currency());
             default -> throw new OperationNotSupportedException("Not supported for type " + data.type());
         };

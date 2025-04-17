@@ -56,7 +56,6 @@ public final class YearGainsInfo {
                 .subtract(getTotalBuySellCommissionValue());
     }
 
-
     // == PACKAGE PRIVATE ==
     void addToTotalBuyValue(BigDecimal buyValue) {
         this.totalBuyValue = this.totalBuyValue.add(buyValue);

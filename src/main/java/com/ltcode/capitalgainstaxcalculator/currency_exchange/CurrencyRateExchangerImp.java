@@ -65,6 +65,7 @@ public class CurrencyRateExchangerImp implements CurrencyRateExchanger {
             }
         }
         if (exchangeRateMap.get(date) == null) {
+            System.out.println(exchangeRateMap);
             throw new ExchangeRateNotFoundException(
                     String.format("Found no exchange rage from currency %s to currency %s on date %s.\n",
                             from, toCurrency, date));

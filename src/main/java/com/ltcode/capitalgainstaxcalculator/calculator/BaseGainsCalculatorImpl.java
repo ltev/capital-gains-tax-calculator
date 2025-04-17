@@ -55,11 +55,15 @@ public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
 
         // read transactions from file
         List<? extends Transaction> transactions = switch (fileInfo.getFileType()) {
-            case TRANSACTIONS -> TransactionReader.readTransactionsFile(
+            case STOCK_TRANSACTIONS -> TransactionReader.readTransactionsFile(
                     fileInfo.getBroker(),
                     fileInfo.getPath()
             );
-            case ACCOUNT -> TransactionReader.readAccountFile(
+            case STOCK_ACCOUNT -> TransactionReader.readAccountFile(
+                    fileInfo.getBroker(),
+                    fileInfo.getPath()
+            );
+            case CRYPTO_TRANSACTIONS -> TransactionReader.readCryptoTransactionsFile(
                     fileInfo.getBroker(),
                     fileInfo.getPath()
             );

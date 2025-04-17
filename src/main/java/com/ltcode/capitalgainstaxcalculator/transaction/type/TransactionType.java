@@ -9,5 +9,6 @@ public enum TransactionType {
     CASH_WITHDRAWAL,
     STOCK_SPLIT,
     CUSTODY_FEE,
+    CUSTODY_FEE_REVERSAL,
     TRANSFER_TO_DIFF_LOCATION
 }

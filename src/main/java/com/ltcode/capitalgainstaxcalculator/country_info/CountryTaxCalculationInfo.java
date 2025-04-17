@@ -26,6 +26,10 @@ public final class CountryTaxCalculationInfo {
         final Currency currency;
         final int precision;
         final RoundingMode rounding;
+        /*
+         * difference in days between when the transaction happened and what day for exchange rate to take
+         * dataShift of value minus one (-1) means that the exchange rate should be from the previous day
+         */
         final Period dataShift;
 
         switch (country) {
@@ -34,6 +38,12 @@ public final class CountryTaxCalculationInfo {
                 precision = 2;
                 rounding = RoundingMode.HALF_UP;
                 dataShift = Period.ofDays(-1);
+                break;
+            case GERMANY:
+                currency = Currency.EUR;
+                precision = 2;
+                rounding = RoundingMode.HALF_UP;
+                dataShift = Period.ofDays(0);
                 break;
             default:
                 throw new CountryInfoException("No dataShift for country: " + country);

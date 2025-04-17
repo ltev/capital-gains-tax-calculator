@@ -5,7 +5,6 @@ import com.ltcode.capitalgainstaxcalculator.exception.TransactionInfoException;
 import com.ltcode.capitalgainstaxcalculator.transaction.*;
 import com.ltcode.capitalgainstaxcalculator.transaction.joined.JoinedTransaction;
 import com.ltcode.capitalgainstaxcalculator.transaction.type.TransactionType;
-import com.ltcode.capitalgainstaxcalculator.utils.Utils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -45,7 +44,7 @@ public class SellBuyJoiner {
     }
 
     public List<JoinedTransaction> join() {
-        StringBuilder infoBuilder = new StringBuilder();
+        StringBuilder reportBuilder = new StringBuilder();
         this.sellTransactionList = new ArrayList<>();
         this.buyTransactionMap = new HashMap<>();
         this.splitTransactionsMap = new HashMap<>();
@@ -63,13 +62,10 @@ public class SellBuyJoiner {
 
                 // CHECK FOR SPLIT
                 // in Revolut: (in Degiro no split exists - stock are sold and bought instead)
-                // split transaction nr 1 gives us the old quantity that we had before the split
-                // split transaction nr 2 give us the new quantity after split that we have now
                 List<SplitTransaction> splitTransactionList = splitTransactionsMap.get(sellTransaction.getTicker());
-                if (splitTransactionList != null && splitTransactionList.size() > 0 && splitTransactionList.get(0).getTicker().equals(sellTransaction.getTicker())) {
+                if (splitTransactionList != null && splitTransactionList.size() > 0) {
                     numberOfSplits++;
-                    updateAffectedSplitTransactions(splitTransactionList.get(0), splitTransactionList.get(1));
-                    splitTransactionList.remove(0);
+                    updateAffectedSplitTransactions(splitTransactionList.get(0));
                     splitTransactionList.remove(0);
                 }
 
@@ -90,13 +86,22 @@ public class SellBuyJoiner {
                     BuySellTransaction buyTransaction = buyList.get(0);
 
                     Duration durationDiff = Duration.between(buyTransaction.getDateTime(), sellTransaction.getDateTime());
-                    if (durationDiff.isZero() || durationDiff.isNegative()) {
+                    if (durationDiff.isNegative()) {
                         // in Degiro broker this can happen
                         // throw new InvalidDateOrderException("Sell transaction can not happen before buy transaction." + sellTransaction);
                         // thats why allow it to happen when the buy / sell difference is less than one day
-                        if (durationDiff.getSeconds() < Duration.ofDays(1).getSeconds()) {
-                            isSellBuyTimeMatching = false;
+                        durationDiff = durationDiff.abs();
+                        if (durationDiff.getSeconds() > Duration.ofDays(1).getSeconds()) {
+                            throw new TransactionInfoException("Duration between sell and buy can not be greater than one day");
                         }
+                        isSellBuyTimeMatching = false;
+                        reportBuilder.append("PROBLEM: sell time happens before buy time")
+                                .append("\n")
+                                .append(sellTransaction)
+                                .append("\n")
+                                .append(buyTransaction)
+                                .append("\n")
+                                .append("\n");
                     }
 
                     int compare = quantityLeft.compareTo(buyTransaction.getQuantity());
@@ -122,8 +127,9 @@ public class SellBuyJoiner {
                     result.add(new JoinedTransaction(sellTransaction, matchingBuyList, isSellBuyTimeMatching));
                 }
             } catch (InvalidQuantityException e) {
-                infoBuilder.append("PROBLEM: ")
+                reportBuilder.append("PROBLEM: ")
                         .append(e.getMessage())
+                        .append("\n")
                         .append("\n");
             }
         }
@@ -135,7 +141,7 @@ public class SellBuyJoiner {
             }
         }
 
-        REPORT = infoBuilder.toString();
+        REPORT = reportBuilder.toString();
         return result;
     }
 
@@ -211,25 +217,13 @@ public class SellBuyJoiner {
         }
     }
 
-    private void updateAffectedSplitTransactions(SplitTransaction oldData, SplitTransaction newData) {
-        if (!oldData.getTicker().equals(newData.getTicker())) {
-            throw new TransactionInfoException("Different split tickers: " + oldData.getTicker() + " / " + newData.getTicker());
-        }
-        if (! Utils.isNegative(oldData.getQuantity())
-                || ! Utils.isPositive(newData.getQuantity())
-                || Utils.isZero(oldData.getQuantity())
-                || Utils.isZero(newData.getQuantity())) {
-            throw new InvalidQuantityException(String.format(
-                    "First transaction must have negative quantity and second positive. %s %s", oldData, newData));
-        }
-        BigDecimal fromQuantity = oldData.getQuantity().negate();
-        BigDecimal toQuantity = newData.getQuantity();
-        BigDecimal splitAmount = toQuantity.divide(fromQuantity);
+    private void updateAffectedSplitTransactions(SplitTransaction splitTransaction) {
+        BigDecimal splitAmount = splitTransaction.getValue();
 
-        var buyList = buyTransactionMap.get(newData.getTicker());
+        var buyList = buyTransactionMap.get(splitTransaction.getTicker());
         for (int i = 0; i < buyList.size(); i++) {
             BuySellTransaction buy = buyList.get(i);
-            if (Duration.between(buy.getDateTime(), oldData.getDateTime()).isNegative()) {
+            if (Duration.between(buy.getDateTime(), splitTransaction.getDateTime()).isNegative()) {
                 break;
             }
             var newQuantity = buy.getQuantity().multiply(splitAmount);
@@ -249,6 +243,4 @@ public class SellBuyJoiner {
                 ", buyTransactionMap=" + buyTransactionMap +
                 '}';
     }
-
-
 }

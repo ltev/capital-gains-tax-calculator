@@ -2,6 +2,7 @@ package com.ltcode.capitalgainstaxcalculator.broker;
 
 public enum FileType {
 
-    ACCOUNT,
-    TRANSACTIONS
+    STOCK_ACCOUNT,
+    STOCK_TRANSACTIONS,
+    CRYPTO_TRANSACTIONS
 }

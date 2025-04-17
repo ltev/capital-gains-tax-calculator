@@ -106,7 +106,6 @@ public class StockGainsInfo {
         return sb.substring(1);
     }
 
-
     @Override
     public String toString() {
         return "StockGainsInfo{" +

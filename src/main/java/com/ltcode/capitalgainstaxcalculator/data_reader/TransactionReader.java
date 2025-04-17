@@ -48,8 +48,8 @@ public class TransactionReader {
             POLISH ("Zakup",
                     "Sprzeda",
                     "Konwersja funduszu go",
-                    "Dividende",
-                    ""),
+                    "Dywidenda",
+                    "Podatek Dywidendowy"),
             GERMAN ("Kauf",
                     "Verkauf",
                     "Geldmarktfonds Umwandlung:",
@@ -310,6 +310,7 @@ public class TransactionReader {
                     case "DIVIDEND" -> TransactionType.DIVIDEND;
                     case "STOCK SPLIT" -> TransactionType.STOCK_SPLIT;
                     case "CUSTODY FEE" -> TransactionType.CUSTODY_FEE;
+                    case "CUSTODY FEE REVERSAL" -> TransactionType.CUSTODY_FEE_REVERSAL;
                     case "CASH TOP-UP" -> TransactionType.CASH_TOP_UP;
                     case "CASH WITHDRAWAL" -> TransactionType.CASH_WITHDRAWAL;
                     case "TRANSFER FROM" -> TransactionType.TRANSFER_TO_DIFF_LOCATION;
@@ -634,6 +635,10 @@ public class TransactionReader {
             DIVIDEND_KEY_WORD = LANGUAGE.getDividendDescription();
             DIVIDEND_TAX_KEY_WORD = LANGUAGE.getDividendTaxDescription();
 
+            System.out.println("Language: " + LANGUAGE);
+            System.out.println("Dividend key word: " + DIVIDEND_KEY_WORD);
+            System.out.println("Dividend tax key word: " + DIVIDEND_TAX_KEY_WORD);
+
             for (int i = 0; i < lines.size(); i++) {
                 String line = lines.get(i);
                 String[] arr = getSplit(line);
@@ -649,6 +654,8 @@ public class TransactionReader {
                 if (!isDividend && !isTaxPaid) {
                     continue;
                 }
+
+                // System.out.println("Dividend: " + Arrays.toString(arr));
 
                 LocalDateTime dateTime = LocalDateTime.of(
                         LocalDate.parse(arr[ACCOUNT_INDEX_MAP.get(FileData.DATE)], DateTimeFormatter.ofPattern("dd-MM-yyyy")),
@@ -921,7 +928,8 @@ public class TransactionReader {
             try {
                 currency = Currency.valueOf(s.substring(i + 1, j));
             } catch (RuntimeException e) {
-                throw new NotAllDataInDescriptionException("Currency not found in description!");
+                throw new NotAllDataInDescriptionException("Currency not found in description! " + s.substring(i + 1, j) +
+                        " | " + s);
             }
 
             // price per share
@@ -955,7 +963,9 @@ public class TransactionReader {
             }
 
             for (int i = 1; i < lines.size(); i++) {
+                System.out.println(i);
                 String line = lines.get(i);
+                System.out.println(line);
                 String[] arr = getSplit(line);
 
                 if (arr.length != 18 && arr.length != 19) {
@@ -983,7 +993,7 @@ public class TransactionReader {
                 BigDecimal commission = arr[TRANSACTIONS_INDEX_MAP.get(FileData.COMMISSION)].isEmpty()
                         ? BigDecimal.ZERO
                         : new BigDecimal(arr[TRANSACTIONS_INDEX_MAP.get(FileData.COMMISSION)]);
-                TransactionType type;
+                TransactionType type = null;
 
 
                 // quantity negative -> value positive
@@ -995,7 +1005,15 @@ public class TransactionReader {
                     type = TransactionType.SELL;
                     quantity = quantity.abs();
                 } else {
-                    throw new InvalidQuantityException("Invalid quantity / value " + line);
+                    if (Utils.isZero(quantity)) {
+                        System.out.println("Ignoring transaction with quantity == 0: " + line);
+                        continue;
+                    } else if (Utils.isZero(valueWithoutCommission)) {                          // stocks added as dividend
+                        type = TransactionType.BUY;
+                        System.out.println("Added stock as dividend: " + line);
+                    } else {
+                        throw new InvalidQuantityException("Invalid quantity / value " + line);
+                    }
                 }
 
                 if (Utils.isPositive(commission)) {

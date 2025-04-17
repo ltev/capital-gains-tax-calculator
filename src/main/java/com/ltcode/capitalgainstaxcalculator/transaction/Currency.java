@@ -7,5 +7,6 @@ public enum Currency {
     JPY,
     SEK,
     HKD,
-    GBP
+    GBP,
+    CHF
 }

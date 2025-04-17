@@ -59,4 +59,14 @@ public class DividendTransaction extends Transaction {
     public BigDecimal getDividendAfterTaxes() {
         return value;
     }
+
+    @Override
+    public String toString() {
+        return "DividendTransaction{" +
+                "ticker='" + ticker + '\'' +
+                ", product='" + product + '\'' +
+                ", dividendBeforeTaxes=" + dividendBeforeTaxes +
+                ", taxesPaid=" + taxesPaid +
+                "} " + super.toString();
+    }
 }

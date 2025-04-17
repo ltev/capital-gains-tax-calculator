@@ -20,7 +20,7 @@ public class TransactionValuesConverter {
 
     public TransactionValuesConverter(CountryTaxCalculationInfo countryInfo) {
         this.countryInfo = countryInfo;
-        this.exchanger = new CurrencyRateExchangerImp(countryInfo.getCurrency(), Settings.EXCHANGE_RATES_DATA_PATH);;
+        this.exchanger = new CurrencyRateExchangerImp(countryInfo.getCurrency(), Settings.EXCHANGE_RATES_DATA_PATH.resolve(countryInfo.getCountry().name()));;
     }
 
     public BigDecimal getRateAfterShiftUpTo7DaysPrevious(Transaction transaction) {
