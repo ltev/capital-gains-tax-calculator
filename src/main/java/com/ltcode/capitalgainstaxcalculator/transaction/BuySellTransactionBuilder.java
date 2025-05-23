@@ -91,7 +91,6 @@ public class BuySellTransactionBuilder {
         return this;
     }
 
-
     public BuySellTransaction build() {
         if (originalQuantity == null) {
             return new BuySellTransaction(type, dateTime, ticker, product, quantity, pricePerShare, value, commission, currency);

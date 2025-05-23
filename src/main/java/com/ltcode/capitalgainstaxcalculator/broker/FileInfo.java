@@ -2,27 +2,12 @@ package com.ltcode.capitalgainstaxcalculator.broker;
 
 import java.nio.file.Path;
 
-public class FileInfo {
+public record FileInfo(
+        Broker broker,
+        FileType fileType,
+        Path path) {
 
-    private Broker broker;
-    private FileType fileType;
-    private Path path;
-
-    public FileInfo(Broker broker, FileType fileType, Path path) {
-        this.broker = broker;
-        this.fileType = fileType;
-        this.path = path;
-    }
-
-    public Broker getBroker() {
-        return broker;
-    }
-
-    public FileType getFileType() {
-        return fileType;
-    }
-
-    public Path getPath() {
-        return path;
+    public boolean isBrokerAndFileTypeSame(FileInfo other) {
+        return broker == other.broker && fileType == other.fileType;
     }
 }

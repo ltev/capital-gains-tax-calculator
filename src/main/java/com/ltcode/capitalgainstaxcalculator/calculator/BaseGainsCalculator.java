@@ -1,10 +1,12 @@
 package com.ltcode.capitalgainstaxcalculator.calculator;
 
 import com.ltcode.capitalgainstaxcalculator.broker.FileInfo;
-import com.ltcode.capitalgainstaxcalculator.transaction.Transaction;
+import com.ltcode.capitalgainstaxcalculator.country_info.CountryTaxCalculationInfo;
+import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyRateExchanger;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -13,13 +15,19 @@ import java.util.Map;
  */
 public interface BaseGainsCalculator {
 
-    void calculate(FileInfo fileInfo);
+    FileInfo getFileInfo();
 
-    void calculate(List<? extends Transaction> transactions);
+    void loadFileData();
+
+    void calculate(CountryTaxCalculationInfo countryInfo, LocalDate lastCalculationDate, CurrencyRateExchanger exchanger);
 
     Map<Integer, YearGainsInfo> getTotalGains();
 
     YearGainsInfo getTotalGains(int year);
+
+    Map<Integer, YearSellBuyInfo> getTotalSellsBuys();
+
+    YearSellBuyInfo getTotalSellsBuys(int year);
 
     StockGainsInfo getTotalGains(int year, String ticker);
 

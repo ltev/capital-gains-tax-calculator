@@ -219,6 +219,7 @@ public class SellBuyJoiner {
     public List<BuySellTransaction> getLeftTransaction() {
         return buyTransactionMap.values().stream()
                 .flatMap(List::stream)
+                .sorted(Comparator.comparing(Transaction::getDateTime))
                 .toList();
     }
 

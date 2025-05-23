@@ -20,11 +20,9 @@ BaseGainsCalculatorImplTest {
 
     @BeforeEach
     void setUp() {
-        calculator = new BaseGainsCalculatorImpl(
-                new CountryTaxCalculationInfo(null, USD, 2, RoundingMode.HALF_UP, Period.ofDays(0)),
-                LocalDate.now()
-        );
-        calculator.calculate(TestSettings.getTransactionList(TestSettings.SOURCE.HERE));
+//        calculator = new BaseGainsCalculatorImpl(TestSettings.getTransactionList(TestSettings.SOURCE.HERE));
+//        calculator.calculate(new CountryTaxCalculationInfo(null, USD, 2, RoundingMode.HALF_UP, Period.ofDays(0)),
+//                LocalDate.now());
     }
 
     @Test

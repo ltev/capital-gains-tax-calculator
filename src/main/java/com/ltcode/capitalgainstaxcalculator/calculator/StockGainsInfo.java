@@ -6,11 +6,13 @@ import java.math.BigDecimal;
 
 public class StockGainsInfo {
 
-    public static final String CSV_HEADER = "year,ticker,product,sell value, buy value, commission, profit, currency";
+    public static final String CSV_HEADER = "year,ticker,product, sold quantity, sell value, buy value, commission, profit, currency";
+
     private final int year;
     private final String ticker;
     private final String product;
     private final Currency currency;
+    private BigDecimal totalSoldQuantity;
     private BigDecimal totalBuyValue;
     private BigDecimal totalSellValue;
     private BigDecimal totalBuyCommission;
@@ -21,10 +23,11 @@ public class StockGainsInfo {
         this.ticker = ticker;
         this.product = product;
         this.currency = currency;
-        this.totalBuyValue = new BigDecimal(0);
-        this.totalSellValue = new BigDecimal(0);
-        this.totalBuyCommission = new BigDecimal(0);
-        this.totalSellCommission = new BigDecimal(0);
+        this.totalSoldQuantity = BigDecimal.ZERO;
+        this.totalBuyValue = BigDecimal.ZERO;
+        this.totalSellValue = BigDecimal.ZERO;
+        this.totalBuyCommission = BigDecimal.ZERO;
+        this.totalSellCommission = BigDecimal.ZERO;
     }
 
     public int getYear() {
@@ -42,6 +45,8 @@ public class StockGainsInfo {
     public Currency getCurrency() {
         return currency;
     }
+
+    public BigDecimal getTotalSoldQuantity() {return totalSoldQuantity;}
 
     public BigDecimal getTotalBuyValue() {
         return totalBuyValue;
@@ -65,6 +70,10 @@ public class StockGainsInfo {
 
 
     // == PACKAGE PRIVATE ==
+    void addToTotalSoldQuantity(BigDecimal soldQuantity) {
+        this.totalSoldQuantity = this.totalSoldQuantity.add(soldQuantity);
+    }
+
     void addToTotalBuyValue(BigDecimal buyValue) {
         this.totalBuyValue = this.totalBuyValue.add(buyValue);
     }
@@ -89,15 +98,16 @@ public class StockGainsInfo {
         final char SEPARATOR = ',';
         StringBuilder sb = new StringBuilder();
 
-        Object[] data = new Object[8];
+        Object[] data = new Object[9];
         data[0] = year;
         data[1] = ticker;
         data[2] = "\"" + product + "\"";
-        data[3] = totalSellValue;
-        data[4] = totalBuyValue;
-        data[5] = getTotalBuySellCommission();
-        data[6] = getTotalProfitValue();
-        data[7] = currency;
+        data[3] = totalSoldQuantity;
+        data[4] = totalSellValue;
+        data[5] = totalBuyValue;
+        data[6] = getTotalBuySellCommission();
+        data[7] = getTotalProfitValue();
+        data[8] = currency;
 
         for (Object d : data) {
             sb.append(SEPARATOR)

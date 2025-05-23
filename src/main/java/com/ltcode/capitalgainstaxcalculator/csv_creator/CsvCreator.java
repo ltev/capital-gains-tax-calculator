@@ -19,8 +19,8 @@ public class CsvCreator {
             try {
                 output = TransactionUtils.get(transaction, data);
             } catch (OperationNotSupportedException e) {
-                output = "";
                 // ignore
+                output = "";
             }
             if (data == TransactionData.PRODUCT) {              // ',' might be in product name
                 sb.append("\"");

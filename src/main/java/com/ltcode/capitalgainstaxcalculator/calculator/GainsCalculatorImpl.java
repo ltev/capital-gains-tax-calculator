@@ -2,10 +2,16 @@ package com.ltcode.capitalgainstaxcalculator.calculator;
 
 import com.ltcode.capitalgainstaxcalculator.broker.FileInfo;
 import com.ltcode.capitalgainstaxcalculator.country_info.CountryTaxCalculationInfo;
+import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyRateExchanger;
+import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyRateExchangerImp;
 import com.ltcode.capitalgainstaxcalculator.data_reader.data_writer.Write;
+import com.ltcode.capitalgainstaxcalculator.exception.CapitalGainsTaxCalculatorException;
+import com.ltcode.capitalgainstaxcalculator.settings.Settings;
+import com.ltcode.capitalgainstaxcalculator.transaction.Currency;
 
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,22 +21,34 @@ import java.util.Map;
  */
 public class GainsCalculatorImpl implements GainsCalculator {
 
-    private final CountryTaxCalculationInfo countryInfo;
-    private final LocalDate lastCalculationDate;
-    private BaseGainsCalculator[] baseCalculators;
+    private final List<BaseGainsCalculator> baseCalculators;
+    private final CurrencyRateExchanger exchanger;
+    private CountryTaxCalculationInfo countryInfo;
 
-    public GainsCalculatorImpl(CountryTaxCalculationInfo countryInfo, LocalDate lastCalculationDate) {
-        this.countryInfo = countryInfo;
-        this.lastCalculationDate = lastCalculationDate;
+    public GainsCalculatorImpl(FileInfo... fileInfos) {
+        if (fileInfos == null || fileInfos.length == 0) {
+            throw new CapitalGainsTaxCalculatorException("No files information supplied.");
+        }
+
+        List<BaseGainsCalculator> tempCalculators = new ArrayList<>();
+        for (FileInfo fileInfo : fileInfos) {
+            BaseGainsCalculator baseCalculator = new BaseGainsCalculatorImpl(fileInfo);
+            tempCalculators.add(baseCalculator);
+        }
+        this.baseCalculators = tempCalculators;
+        this.exchanger = new CurrencyRateExchangerImp(Currency.PLN, Settings.EXCHANGE_RATES_DATA_PATH);
+    }
+
+
+    @Override
+    public void loadFileData() {
+        baseCalculators.forEach(BaseGainsCalculator::loadFileData);
     }
 
     @Override
-    public void calculate(FileInfo... fileInfoArr) {
-        this.baseCalculators = new BaseGainsCalculator[fileInfoArr.length];
-        for (int i = 0; i < baseCalculators.length; i++) {
-            baseCalculators[i] = new BaseGainsCalculatorImpl(countryInfo, lastCalculationDate);
-            baseCalculators[i].calculate(fileInfoArr[i]);
-        }
+    public void calculate(CountryTaxCalculationInfo countryInfo, LocalDate lastCalculationDate) {
+        this.countryInfo = countryInfo;
+        baseCalculators.forEach(bc -> bc.calculate(countryInfo, lastCalculationDate, exchanger));
     }
 
     @Override
@@ -38,12 +56,17 @@ public class GainsCalculatorImpl implements GainsCalculator {
         for (var baseCalculator : baseCalculators) {
             baseCalculator.generateTransactionsCsvFile(directory);
         }
-        Write.generateCalculationSummaryTxtFile(
+        Write.generateCalculationGainsSummaryTxtFile(
                 getTotalGains(),
                 List.of(),
                 "",
                 directory.resolve("summary_all_brokers.txt")
         );
+    }
+
+    @Override
+    public List<BaseGainsCalculator> getBaseGainsCalculators() {
+        return baseCalculators;
     }
 
     @Override

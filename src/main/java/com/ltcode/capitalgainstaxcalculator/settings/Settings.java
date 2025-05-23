@@ -15,18 +15,26 @@ public class Settings {
     // == WRITE FILES ==
 
     public static final String CSV_FILE_TYPE = ".csv";
+
     public static final Path GENERATED_DATA_PATH = Path.of("data_generated");
+
     public static final String TRANSACTIONS_FILE_NAME = "transactions" + CSV_FILE_TYPE;
 
-    public static final String JOINED_TRANSACTIONS_FILE_NAME = "joined_transactions" + CSV_FILE_TYPE;;
+    public static final String BUY_TRANSACTIONS_FILE_NAME = "buy_transactions" + CSV_FILE_TYPE;
 
-    public static final String DIVIDEND_TRANSACTIONS_FILE_NAME = "dividend" + CSV_FILE_TYPE;;
+    public static final String SELL_TRANSACTIONS_FILE_NAME = "sell_transactions" + CSV_FILE_TYPE;
 
-    public static final String GAINS_FILE_NAME = "stock_gains" + CSV_FILE_TYPE;;
+    public static final String LEFT_BUY_TRANSACTIONS_FILE_NAME = "left_buy_transactions" + CSV_FILE_TYPE;
 
-    public static final String SUMMARY_FILE_NAME = "summary.txt";
+    public static final String JOINED_TRANSACTIONS_FILE_NAME = "joined_transactions" + CSV_FILE_TYPE;
 
+    public static final String DIVIDEND_TRANSACTIONS_FILE_NAME = "dividend" + CSV_FILE_TYPE;
 
+    public static final String GAINS_FILE_NAME = "stock_gains" + CSV_FILE_TYPE;
+
+    public static final String GAINS_SUMMARY_FILE_NAME = "gains_summary.txt";
+
+    public static final String BUY_SELL_SUMMARY_FILE_NAME = "buy_sell_summary.txt";
 
     public static final char CSV_SEPARATOR = ',';
 

@@ -1,21 +1,26 @@
 package com.ltcode.capitalgainstaxcalculator.calculator;
 
+import com.ltcode.capitalgainstaxcalculator.exception.CapitalGainsTaxCalculatorException;
 import com.ltcode.capitalgainstaxcalculator.transaction.Currency;
+import com.ltcode.capitalgainstaxcalculator.transaction.Transaction;
+import com.ltcode.capitalgainstaxcalculator.transaction_converter.TransactionValuesConverter;
 
 import java.math.BigDecimal;
 
-public final class YearGainsInfo {
+public final class YearSellBuyInfo {
 
     private final int year;
+    private final TransactionValuesConverter valuesConverter;
     private final Currency currency;
     private BigDecimal totalBuyValue;
     private BigDecimal totalSellValue;
     private BigDecimal totalBuyCommissionValue;
     private BigDecimal totalSellCommissionValue;
 
-    public YearGainsInfo(int year, Currency currency) {
+    public YearSellBuyInfo(int year, TransactionValuesConverter valuesConverter) {
         this.year = year;
-        this.currency = currency;
+        this.valuesConverter = valuesConverter;
+        this.currency = valuesConverter.getToCurrency();
         this.totalBuyValue = BigDecimal.ZERO;
         this.totalSellValue = BigDecimal.ZERO;
         this.totalBuyCommissionValue = BigDecimal.ZERO;
@@ -50,13 +55,29 @@ public final class YearGainsInfo {
         return totalSellCommissionValue.add(totalBuyCommissionValue);
     }
 
-    public BigDecimal getTotalProfitValue() {
-        return totalSellValue
-                .subtract(totalBuyValue)
-                .subtract(getTotalBuySellCommissionValue());
-    }
-
     // == PACKAGE PRIVATE ==
+
+    void add(Transaction transaction) {
+        if (year != transaction.getDateTime().getYear()) {
+            throw new CapitalGainsTaxCalculatorException("Invalid year");
+        }
+
+        BigDecimal convertedValue = valuesConverter.getValue(transaction);
+        BigDecimal convertedCommission = valuesConverter.getCommission(transaction);
+
+        switch (transaction.getType()) {
+            case SELL:
+                addToTotalSellValue(convertedValue);
+                addToTotalSellCommission(convertedCommission);
+                break;
+            case BUY:
+                addToTotalBuyValue(convertedValue);
+                addToTotalBuyCommission(convertedCommission);
+                break;
+            default:
+                throw new CapitalGainsTaxCalculatorException("Invalid transaction type");
+        }
+    }
 
     void addToTotalBuyValue(BigDecimal buyValue) {
         this.totalBuyValue = this.totalBuyValue.add(buyValue);
@@ -82,8 +103,6 @@ public final class YearGainsInfo {
                 ", allSellValue=" + totalSellValue +
                 ", allBuyCommissionsValue=" + totalBuyCommissionValue +
                 ", allSellCommissionsValue=" + totalSellCommissionValue +
-                ", profit=" + getTotalProfitValue() +
-                ", currency=" + currency +
                 '}';
     }
 }

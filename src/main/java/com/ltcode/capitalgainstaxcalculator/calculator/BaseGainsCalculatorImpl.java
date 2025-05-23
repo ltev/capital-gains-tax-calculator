@@ -3,16 +3,18 @@ package com.ltcode.capitalgainstaxcalculator.calculator;
 import com.ltcode.capitalgainstaxcalculator.broker.FileInfo;
 import com.ltcode.capitalgainstaxcalculator.country_info.CountryTaxCalculationInfo;
 import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyRateExchanger;
-import com.ltcode.capitalgainstaxcalculator.currency_exchange.CurrencyRateExchangerImp;
 import com.ltcode.capitalgainstaxcalculator.data_reader.TransactionReader;
 import com.ltcode.capitalgainstaxcalculator.data_reader.data_writer.Write;
 import com.ltcode.capitalgainstaxcalculator.exception.InvalidDateOrderException;
 import com.ltcode.capitalgainstaxcalculator.settings.Settings;
-import com.ltcode.capitalgainstaxcalculator.transaction.*;
 import com.ltcode.capitalgainstaxcalculator.transaction.Currency;
+import com.ltcode.capitalgainstaxcalculator.transaction.DividendTransaction;
+import com.ltcode.capitalgainstaxcalculator.transaction.Transaction;
+import com.ltcode.capitalgainstaxcalculator.transaction.TransactionUtils;
 import com.ltcode.capitalgainstaxcalculator.transaction.joined.JoinedTransaction;
 import com.ltcode.capitalgainstaxcalculator.transaction.type.TransactionType;
 import com.ltcode.capitalgainstaxcalculator.transaction_converter.TransactionValuesConverter;
+import lombok.Getter;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -20,16 +22,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
 
-    private final CountryTaxCalculationInfo countryInfo;
-    private final LocalDate lastCalculationDate;
-    private FileInfo fileInfo;
-    private final TransactionValuesConverter valuesConverter;
+    @Getter
+    private final FileInfo fileInfo;
+    private CountryTaxCalculationInfo countryInfo;
+    private LocalDate lastCalculationDate;
+    private TransactionValuesConverter valuesConverter;
+    private CurrencyRateExchanger exchanger;
+    private Currency toCurrency;
     private List<? extends Transaction> transactions;
     private SellBuyJoiner joiner;
-    private final CurrencyRateExchanger exchanger;
     private List<JoinedTransaction> joinedTransactionList;
     private List<DividendTransaction> dividendTransactionsList;
     /**
@@ -40,44 +45,48 @@ public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
      * year -> TotalGainsInfo
      */
     private Map<Integer, YearGainsInfo> yearGainsInfo;
-
     private Map<Integer, DividendGainsInfo> yearDividendGainsMap;
-    private final Currency toCurrency;
+    private Map<Integer, YearSellBuyInfo> yearSellBuyInfoMap;
 
-    public BaseGainsCalculatorImpl(CountryTaxCalculationInfo countryInfo, LocalDate lastCalculationDate) {
+    public BaseGainsCalculatorImpl(FileInfo fileInfo) {
+        this.fileInfo = fileInfo;
+    }
+
+    /**
+     * Reads transactions from file
+     */
+    @Override
+    public void loadFileData() {
+        // read transactions from file
+        transactions = switch (fileInfo.fileType()) {
+            case STOCK_TRANSACTIONS -> TransactionReader.readTransactionsFile(
+                    fileInfo.broker(),
+                    fileInfo.path()
+            );
+            case STOCK_ACCOUNT -> TransactionReader.readAccountFile(
+                    fileInfo.broker(),
+                    fileInfo.path()
+            );
+            case CRYPTO_TRANSACTIONS -> TransactionReader.readCryptoTransactionsFile(
+                    fileInfo.broker(),
+                    fileInfo.path()
+            );
+        };
+    }
+
+    @Override
+    public void calculate(CountryTaxCalculationInfo countryInfo, LocalDate lastCalculationDate, CurrencyRateExchanger exchanger) {
         this.countryInfo = countryInfo;
         this.lastCalculationDate = lastCalculationDate;
         this.valuesConverter = new TransactionValuesConverter(countryInfo);
-        this.exchanger = new CurrencyRateExchangerImp(this.countryInfo.getCurrency(), Settings.EXCHANGE_RATES_DATA_PATH);
+        this.exchanger = exchanger;
         this.toCurrency = exchanger.getToCurrency();
+
+        calculate();
     }
 
-    @Override
-    public void calculate(FileInfo fileInfo) {
-        this.fileInfo = fileInfo;
-
-        // read transactions from file
-        List<? extends Transaction> transactions = switch (fileInfo.getFileType()) {
-            case STOCK_TRANSACTIONS -> TransactionReader.readTransactionsFile(
-                    fileInfo.getBroker(),
-                    fileInfo.getPath()
-            );
-            case STOCK_ACCOUNT -> TransactionReader.readAccountFile(
-                    fileInfo.getBroker(),
-                    fileInfo.getPath()
-            );
-            case CRYPTO_TRANSACTIONS -> TransactionReader.readCryptoTransactionsFile(
-                    fileInfo.getBroker(),
-                    fileInfo.getPath()
-            );
-        };
-        calculate(transactions);
-    }
-
-    @Override
-    public void calculate(List<? extends Transaction> transactions) {
-        this.transactions = transactions;
-
+    //@Override
+    void calculate() {
         try {
             TransactionUtils.checkTransactionsValidity(transactions);
         } catch (InvalidDateOrderException e) {
@@ -92,8 +101,11 @@ public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
         this.yearStockGainsMap = new LinkedHashMap<>();
         this.yearGainsInfo = new LinkedHashMap<>();
         this.yearDividendGainsMap = new HashMap<>();
+        this.yearSellBuyInfoMap = new HashMap<>();
+
         calculateTotalStockGainsByYear();
         calculateTotalDividendGainsByYear();
+        calculateTotalBuySellValuesByYear();
     }
 
     @Override
@@ -118,10 +130,20 @@ public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
 
     @Override
     public YearGainsInfo getTotalGains(int year) {
-        if (! yearGainsInfo.containsKey(year)) {
+        if (!yearGainsInfo.containsKey(year)) {
             return null;
         }
         return yearGainsInfo.get(year);
+    }
+
+    @Override
+    public Map<Integer, YearSellBuyInfo> getTotalSellsBuys() {
+        return yearSellBuyInfoMap;
+    }
+
+    @Override
+    public YearSellBuyInfo getTotalSellsBuys(int year) {
+        return yearSellBuyInfoMap.get(year);
     }
 
     @Override
@@ -131,7 +153,7 @@ public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
 
     @Override
     public DividendGainsInfo getTotalDividends(int year) {
-        if (! yearDividendGainsMap.containsKey(year)) {
+        if (!yearDividendGainsMap.containsKey(year)) {
             return null;
         }
         return yearDividendGainsMap.get(year);
@@ -142,9 +164,9 @@ public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
     @Override
     public void generateTransactionsCsvFile(Path directory) {
         directory = directory.resolve(
-                fileInfo.getBroker().name().toLowerCase()
+                fileInfo.broker().name().toLowerCase()
                         + "_"
-                        + fileInfo.getFileType().name().toLowerCase()
+                        + fileInfo.fileType().name().toLowerCase()
         );
         try {
             Files.createDirectories(directory);
@@ -152,42 +174,64 @@ public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
             throw new RuntimeException(e);
         }
 
-        // in original currency
-        if (transactions.size() > 0) {
-            Write.generateTransactionsCsvFile(
-                    transactions,
-                    directory.resolve(Settings.TRANSACTIONS_FILE_NAME)
-            );
-        }
+        // in original currency and local currency
+        Write.generateTransactionsCsvFile(
+                transactions,
+                valuesConverter,
+                directory.resolve(Settings.TRANSACTIONS_FILE_NAME)
+        );
 
-        if (joinedTransactionList.size() > 0) {
-            Write.generateJoinedTransactionsCsvFile(
-                    joinedTransactionList,
-                    valuesConverter,
-                    directory.resolve(Settings.JOINED_TRANSACTIONS_FILE_NAME)
-            );
-        }
+        // generate active buy transactions - ones that still hasn't been sold before 'lastCalculationDate'
+        Write.generateTransactionsCsvFile(
+                joiner.getLeftTransaction(),
+                valuesConverter,
+                directory.resolve(Settings.LEFT_BUY_TRANSACTIONS_FILE_NAME)
+        );
 
-        if (! yearStockGainsMap.isEmpty()) {
-            Write.generateYearStockGainsMapCsvFile(
-                    yearStockGainsMap,
-                    directory.resolve(Settings.GAINS_FILE_NAME)
-            );
-        }
+        Map<TransactionType, List<Transaction>> buySellTransactions = transactions.stream()
+                .collect(Collectors.groupingBy(Transaction::getType));
 
-        if (dividendTransactionsList.size() > 0) {
-            Write.generateDividendTransactionsCsvFile(
-                    dividendTransactionsList,
-                    valuesConverter,
-                    directory.resolve(Settings.DIVIDEND_TRANSACTIONS_FILE_NAME)
-            );
-        }
+        // all buy transactions
+        Write.generateTransactionsCsvFile(
+                buySellTransactions.get(TransactionType.BUY),
+                valuesConverter,
+                directory.resolve(Settings.BUY_TRANSACTIONS_FILE_NAME)
+        );
 
-        Write.generateCalculationSummaryTxtFile(
+        // all sell transactions
+        Write.generateTransactionsCsvFile(
+                buySellTransactions.get(TransactionType.SELL),
+                valuesConverter,
+                directory.resolve(Settings.SELL_TRANSACTIONS_FILE_NAME)
+        );
+
+        Write.generateJoinedTransactionsCsvFile(
+                joinedTransactionList,
+                valuesConverter,
+                directory.resolve(Settings.JOINED_TRANSACTIONS_FILE_NAME)
+        );
+
+        Write.generateYearStockGainsMapCsvFile(
+                yearStockGainsMap,
+                directory.resolve(Settings.GAINS_FILE_NAME)
+        );
+
+        Write.generateDividendTransactionsCsvFile(
+                dividendTransactionsList,
+                valuesConverter,
+                directory.resolve(Settings.DIVIDEND_TRANSACTIONS_FILE_NAME)
+        );
+
+        Write.generateCalculationGainsSummaryTxtFile(
                 yearGainsInfo,
                 getLeftStocksList(),
                 joiner.getReport(),
-                directory.resolve(Settings.SUMMARY_FILE_NAME)
+                directory.resolve(Settings.GAINS_SUMMARY_FILE_NAME)
+        );
+
+        Write.generateCalculationSellBuySummaryTxtFile(
+                yearSellBuyInfoMap,
+                directory.resolve(Settings.BUY_SELL_SUMMARY_FILE_NAME)
         );
     }
 
@@ -226,6 +270,7 @@ public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
             currStock.addToTotalSellCommission(valuesConverter.getCommission(sell));
             currStock.addToTotalBuyValue(valuesConverter.getTotalBuyValue(jt));
             currStock.addToTotalBuyCommission(valuesConverter.getTotalBuyCommission(jt));
+            currStock.addToTotalSoldQuantity(sell.quantity);
         }
     }
 
@@ -240,5 +285,15 @@ public class BaseGainsCalculatorImpl implements BaseGainsCalculator {
             yearDividendGainsMap.putIfAbsent(year, new DividendGainsInfo(year, toCurrency));
             yearDividendGainsMap.get(year).addToTotalValue(valuesConverter.getValue(t));
         }
+    }
+
+    private void calculateTotalBuySellValuesByYear() {
+        transactions.stream()
+                .filter(t -> t.getType() == TransactionType.SELL || t.getType() == TransactionType.BUY)
+                .forEach(t -> {
+                    int year = t.getDateTime().getYear();
+                    yearSellBuyInfoMap.putIfAbsent(year, new YearSellBuyInfo(year, valuesConverter));
+                    yearSellBuyInfoMap.get(year).add(t);
+                });
     }
 }

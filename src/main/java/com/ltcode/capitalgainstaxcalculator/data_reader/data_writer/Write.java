@@ -3,48 +3,64 @@ package com.ltcode.capitalgainstaxcalculator.data_reader.data_writer;
 import com.ltcode.capitalgainstaxcalculator.calculator.LeftStockInfo;
 import com.ltcode.capitalgainstaxcalculator.calculator.StockGainsInfo;
 import com.ltcode.capitalgainstaxcalculator.calculator.YearGainsInfo;
+import com.ltcode.capitalgainstaxcalculator.calculator.YearSellBuyInfo;
 import com.ltcode.capitalgainstaxcalculator.csv_creator.CsvCreator;
 import com.ltcode.capitalgainstaxcalculator.settings.Settings;
 import com.ltcode.capitalgainstaxcalculator.transaction.DividendTransaction;
 import com.ltcode.capitalgainstaxcalculator.transaction.Transaction;
 import com.ltcode.capitalgainstaxcalculator.transaction.TransactionData;
 import com.ltcode.capitalgainstaxcalculator.transaction.joined.JoinedTransaction;
+import com.ltcode.capitalgainstaxcalculator.transaction.type.TransactionType;
 import com.ltcode.capitalgainstaxcalculator.transaction_converter.TransactionValuesConverter;
 
-import static com.ltcode.capitalgainstaxcalculator.settings.Settings.GENERATED_DATA_PATH;
-import static com.ltcode.capitalgainstaxcalculator.settings.Settings.CSV_SEPARATOR;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
-import java.util.*;
-import java.util.function.Function;
-import java.util.function.IntFunction;
-import java.util.function.ToIntFunction;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+
+import static com.ltcode.capitalgainstaxcalculator.settings.Settings.CSV_SEPARATOR;
+import static com.ltcode.capitalgainstaxcalculator.settings.Settings.GENERATED_DATA_PATH;
 
 
 public class Write {
 
-    public static void generateTransactionsCsvFile(List<? extends Transaction> transactions) {
+    public static void generateTransactionsCsvFile(List<? extends Transaction> transactions,
+                                                   TransactionValuesConverter valuesConverter) {
         generateTransactionsCsvFile(
                 transactions,
+                valuesConverter,
                 GENERATED_DATA_PATH.resolve(Settings.TRANSACTIONS_FILE_NAME)
         );
     }
 
     public static void generateTransactionsCsvFile(List<? extends Transaction> transactions,
+                                                   TransactionValuesConverter valuesConverter,
                                                    Path path) {
         generateTransactionsCsvFile(
                 transactions,
                 Settings.CSV_TRANSACTION_WRITE_ORDER,
+                valuesConverter,
                 path
         );
     }
 
     public static void generateTransactionsCsvFile(List<? extends Transaction> transactions,
                                                    TransactionData[] order,
+                                                   TransactionValuesConverter valuesConverter,
                                                    Path path) {
+        String[] extendedOrder = {
+                "Exchange Rate",
+                //"Price per share",
+                "Value",
+                "Commission",
+                "Currency"
+        };
+
         Writer w = null;
         try {
             w = Files.newBufferedWriter(path);
@@ -55,12 +71,28 @@ public class Write {
                 header.append(CSV_SEPARATOR)
                         .append(data);
             }
+            for (var data : extendedOrder) {
+                header.append(CSV_SEPARATOR)
+                        .append(data);
+            }
             w.append(header.substring(1))
                     .append("\n");
 
             // transaction
             for (Transaction t : transactions) {
                 w.append(CsvCreator.get(t, order));
+
+                // local currency data
+                if (t.getType() == TransactionType.BUY || t.getType() == TransactionType.SELL) {
+                    w.append(CSV_SEPARATOR)
+                            .append(valuesConverter.getRateAfterShiftUpTo7DaysPrevious(t).toString())
+                            .append(CSV_SEPARATOR)
+                            .append(valuesConverter.getValue(t).toString())
+                            .append(CSV_SEPARATOR)
+                            .append(valuesConverter.getCommission(t).toString())
+                            .append(CSV_SEPARATOR)
+                            .append(valuesConverter.getToCurrency().toString());
+                }
                 w.append('\n');
             }
         } catch (IOException e) {
@@ -94,7 +126,7 @@ public class Write {
                 valuesConverter,
                 path
         );
-    };
+    }
 
     public static void generateJoinedTransactionsCsvFile(List<JoinedTransaction> joinedTransactionList,
                                                          TransactionData[] order,
@@ -290,21 +322,27 @@ public class Write {
         }
     }
 
-    public static void generateCalculationSummaryTxtFile(Map<Integer, YearGainsInfo> yearAllStocksGainsMap,
-                                                         List<LeftStockInfo> leftStocksList,
-                                                         String report) {
-        generateCalculationSummaryTxtFile(
+    public static void generateCalculationGainsSummaryTxtFile(Map<Integer, YearGainsInfo> yearAllStocksGainsMap,
+                                                              List<LeftStockInfo> leftStocksList,
+                                                              String report) {
+        generateCalculationGainsSummaryTxtFile(
                 yearAllStocksGainsMap,
                 leftStocksList,
                 report,
-                GENERATED_DATA_PATH.resolve(Settings.SUMMARY_FILE_NAME)
+                GENERATED_DATA_PATH.resolve(Settings.GAINS_SUMMARY_FILE_NAME)
         );
     }
 
-    public static void generateCalculationSummaryTxtFile(Map<Integer, YearGainsInfo> yearAllStocksGainsMap,
-                                                         List<LeftStockInfo> leftStocksList,
-                                                         String report,
-                                                         Path path) {
+    public static void generateCalculationGainsSummaryTxtFile(Map<Integer, YearGainsInfo> yearAllStocksGainsMap,
+                                                              List<LeftStockInfo> leftStocksList,
+                                                              String report,
+                                                              Path path) {
+        try {
+            Files.createDirectories(path.getParent());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
         Writer w = null;
         try {
             w = Files.newBufferedWriter(path);
@@ -312,12 +350,12 @@ public class Write {
 
             w.append("\tTOTAL GAINS BY YEAR\n\n");
             w.append(String.format("%7s %15s %15s %15s %15s %15s\n",
-                    "YEAR",
-                    "SELL VALUE",
-                    "BUY VALUE",
-                    "COMMISSION",
-                    "PROFIT",
-                    "CURRENCY"
+                            "YEAR",
+                            "SELL VALUE",
+                            "BUY VALUE",
+                            "COMMISSION",
+                            "PROFIT",
+                            "CURRENCY"
                     )
             );
 
@@ -356,18 +394,57 @@ public class Write {
 
             // write report
 
-            if (! report.isEmpty()) {
+            if (!report.isEmpty()) {
                 w.append("\n\tADDITIONAL INFO\n\n");
                 w.append(report);
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         } finally {
             try {
                 w.close();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    public static void generateCalculationSellBuySummaryTxtFile(Map<Integer, YearSellBuyInfo> yearSellBuyInfoMap,
+                                                                Path path) {
+        try (Writer w = Files.newBufferedWriter(path)) {
+            DecimalFormat formatter = new DecimalFormat("#,##0.00");
+
+            w.append("\tTOTAL BUY / SELL TRANSACTIONS VALUE\n\n");
+            w.append(String.format("%7s %15s %15s %15s %15s %15s %15s\n",
+                            "YEAR",
+                            "SELL VALUE",
+                            "SELL COMMISSION",
+                            "BUY VALUE",
+                            "BUY COMMISSION",
+                            "TOTAL COMMISSION",
+                            "CURRENCY"
+                    )
+            );
+
+            int[] sortedYears = yearSellBuyInfoMap.keySet().stream()
+                    .mapToInt(x -> x)
+                    .sorted()
+                    .toArray();
+
+            for (int year : sortedYears) {
+                var gainsInfo = yearSellBuyInfoMap.get(year);
+                w.append(String.format("%7s %15s %15s %15s %15s %15s %15s%n",
+                        gainsInfo.getYear(),
+                        formatter.format(gainsInfo.getTotalSellValue()),
+                        formatter.format(gainsInfo.getTotalSellCommissionValue()),
+                        formatter.format(gainsInfo.getTotalBuyValue()),
+                        formatter.format(gainsInfo.getTotalBuyCommissionValue()),
+                        formatter.format(gainsInfo.getTotalBuySellCommissionValue()),
+                        gainsInfo.getCurrency())
+                );
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }

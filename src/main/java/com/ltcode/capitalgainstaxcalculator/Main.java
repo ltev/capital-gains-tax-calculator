@@ -15,9 +15,8 @@ import java.time.LocalDate;
 public class Main {
 
     public static void main(String[] args) {
-        Path writeDirectory = Paths.get("D:\\workspace\\java\\CapitalGainsTaxCalculator", "end_data");
-
-        String basePath = "F:\\Podatki\\transactions";
+        Path writeDirectory = Paths.get("F:\\podatki\\temp_end_data");
+        String basePath = "F:\\podatki\\transactions";
 
         FileInfo degiroTransactions = new FileInfo(
                 Broker.DEGIRO,
@@ -37,39 +36,40 @@ public class Main {
                 Paths.get(basePath, "revolut_transactions.csv")
         );
 
+        CountryTaxCalculationInfo countryInfo = CountryTaxCalculationInfo.getInstance(Country.POLAND);
+        LocalDate lastCalculationDate = LocalDate.of(2024, 12, 31);
+
         /*
          * STOCK CALCULATION
          */
-        CountryTaxCalculationInfo countryInfo = CountryTaxCalculationInfo.getInstance(Country.POLAND);
-        LocalDate lastCalculationDate = LocalDate.of(2021, 06, 31);
+        GainsCalculator calculator = new GainsCalculatorImpl(
+                degiroTransactions,
+                degiroAccount,
+                revolutTransactions);
 
-        GainsCalculator calculator = new GainsCalculatorImpl(countryInfo, lastCalculationDate);
-        calculator.calculate(
-//                degiroTransactions,
-//                degiroAccount
-                revolutTransactions
-        );
-
+        calculator.loadFileData();
+        calculator.calculate(countryInfo, lastCalculationDate);
         calculator.generateTransactionsCsvFile(writeDirectory
-                .resolve("rt")
+                .resolve("lt")
                 .resolve(countryInfo.getCountry().name().toLowerCase())
                 .resolve("stocks"));
 
         /*
          * CRYPTO CALCULATION
          */
-//        FileInfo revolutCryptoTransactions = new FileInfo(
-//                Broker.REVOLUT,
-//                FileType.CRYPTO_TRANSACTIONS,
-//                Paths.get("F:\\Podatki\\transactions", "revolut_crypto.csv")
-//        );
-//
-//        calculator.calculate(
-//                revolutCryptoTransactions
-//        );
-//        calculator.generateTransactionsCsvFile(writeDirectory
-//                .resolve("lt")
-//                .resolve(countryInfo.getCountry().name().toLowerCase())
-//                .resolve("crypto"));
+        FileInfo revolutCryptoTransactions = new FileInfo(
+                Broker.REVOLUT,
+                FileType.CRYPTO_TRANSACTIONS,
+                Paths.get(basePath, "revolut_crypto_MANUAL.csv")
+        );
+
+        calculator = new GainsCalculatorImpl(revolutCryptoTransactions);
+
+        calculator.loadFileData();
+        calculator.calculate(countryInfo, lastCalculationDate);
+        calculator.generateTransactionsCsvFile(writeDirectory
+                .resolve("lt")
+                .resolve(countryInfo.getCountry().name().toLowerCase())
+                .resolve("crypto"));
     }
 }
